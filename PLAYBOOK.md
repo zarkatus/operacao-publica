@@ -13,6 +13,7 @@ A franquia de repo privado (2.000 min/mês, orçamento US$ 0 com Stop usage) esg
 |---|---|---|
 | `publicar-sites.yml` | publica cada site de `sites.json` no Cloudflare Pages quando o ramo do repo privado tem commit novo; no fim, o agendador em corrente (`scripts/agendar.py`) dispara as rotinas do dia e o próximo ciclo | ~5 min (corrente) + manual |
 | `vigia-rodape.yml` | vigia do rodapé dos sites (código em `innconta-site/scripts/vigia_rodape`) via `scripts/rodar_rotina.py` | 11:30 UTC (corrente) + 14:30 `--rede` (cron do GitHub, só rede) |
+| `ensaio-supabase.yml` | ensaio da reserva do Supabase (S3b/T5.9): self-host oficial + camada da plataforma cifrada (sem dado) + 99 EFs reais, só dado sintético; ~2 min | manual |
 
 ## Como funciona o publicador (`scripts/publicar.py`)
 - Lê o HEAD do ramo pelo `git ls-remote` com **deploy key só leitura** daquele repo (segredo único `DEPLOY_KEYS`, JSON repo→chave).
@@ -37,3 +38,9 @@ A franquia de repo privado (2.000 min/mês, orçamento US$ 0 com Stop usage) esg
 
 ## Histórico
 - 03/10/2026 (sessão fio fornecedores-resiliencia): criado; piloto `schifino-site`.
+
+
+## Ensaio da reserva do Supabase (03/10/2026, fio fornecedores-resiliencia)
+- `ensaio-supabase/ensaio.sh`; resultado e tempos em `OUTPUTS/fornecedores-resiliencia/pesquisa-alternativas-supabase/F-ensaio-selfhost-03out2026.md` (workspace).
+- **Onde morde:** o `.env` oficial fixa `COMPOSE_FILE`: o `docker-compose.override.yml` (trava de saída) só carrega porque o script o acrescenta ali; sem isso o banco do ensaio alcança a produção (run 37134777423). `docker exec -i` dentro de `while read` engole o stdin do laço (usar `< /dev/null`). Passo com `tee` precisa de `shell: bash` (pipefail), senão falha vira success. O `hello` oficial só aceita as chaves novas; o teste usa `ensaio-eco`. Editar o script por Python com `\1` virou byte de controle `^A`: conferir com `cat -A`.
+- Camada é retrato do schema de 03/10: recriar quando o schema mudar muito (roteiro no fio `fornecedores-resiliencia`).
