@@ -65,6 +65,9 @@ echo "::add-mask::$ANON"; echo "::add-mask::$SRV"; echo "::add-mask::$PGPASS"
 
 # EFs da plataforma ao lado de main/ e hello/ do compose
 for d in "$R/plat/supabase/functions"/*/; do n=$(basename "$d"); { [ "$n" = main ] || [ "$n" = hello ]; } && continue; cp -r "$d" volumes/functions/; done
+# EF-eco do ensaio: alvo do teste pg_net -> gateway -> edge-runtime (o hello oficial só aceita as chaves novas e recusa as legadas)
+mkdir -p volumes/functions/ensaio-eco && printf '%s
+' 'Deno.serve(async (req) => new Response(JSON.stringify({ eco: true, metodo: req.method }), { headers: { "Content-Type": "application/json" } }));' > volumes/functions/ensaio-eco/index.ts
 NEF=$(find "$R/plat/supabase/functions" -mindepth 1 -maxdepth 1 -type d ! -name '_*' | wc -l); echo "efs_copiadas=$NEF"
 
 # trava de saída: hosts do schema + das EFs + fixos -> 0.0.0.0
@@ -111,7 +114,7 @@ while read -r EXT SCH; do
   if [ -n "$ATUAL" ] && [ "$ATUAL" != "$SCH" ] && [ "$SCH" != pg_catalog ]; then
     SQL -c "alter extension \"$EXT\" set schema $SCH" < /dev/null >/dev/null 2>>"$DET" && MOV=$((MOV+1)) || echo "nao_relocavel $EXT $ATUAL->$SCH" >> "$DET"
   fi
-done < <(grep -oE '^CREATE EXTENSION IF NOT EXISTS "?[a-z_0-9-]+"? WITH SCHEMA [a-z_]+' "$R/camada.sql" | sed -E 's/.*EXISTS "?([a-z_0-9-]+)"? WITH SCHEMA ([a-z_]+)/ /')
+done < <(grep -oE '^CREATE EXTENSION IF NOT EXISTS "?[a-z_0-9-]+"? WITH SCHEMA [a-z_]+' "$R/camada.sql" | sed -e 's/^CREATE EXTENSION IF NOT EXISTS //' -e 's/ WITH SCHEMA / /' -e 's/"//g')
 echo "extensoes_movidas_para_schema_da_producao=$MOV"
 SQL -v ON_ERROR_STOP=0 < "$R/camada.sql" >/dev/null 2>"$R/restore.err"
 T_REST=$(seg); echo "t_camada_aplicada=${T_REST}s (camada em $((T_REST-T_UP))s)"
@@ -180,11 +183,11 @@ SQL -c "select vault.create_secret('valor-ensaio-123','ensaio_s3b')" >/dev/null 
 conf "vault cifra e decifra" "$(SQL -c "select decrypted_secret from vault.decrypted_secrets where name='ensaio_s3b'")" "valor-ensaio-123"
 J=$(SQL -c "select cron.schedule('ensaio_s3b','* * * * *','select 1')" 2>>"$DET"); [ -n "$J" ] && ok "pg_cron agenda (job $J)" || nok "pg_cron"
 SQL -c "select cron.unschedule('ensaio_s3b')" >/dev/null 2>&1
-RID=$(SQL -c "select net.http_post(url:='http://kong:8000/functions/v1/hello', headers:=jsonb_build_object('Content-Type','application/json','Authorization','Bearer $SRV','apikey','$ANON'), body:='{\"name\":\"ensaio\"}'::jsonb)" 2>>"$DET")
+RID=$(SQL -c "select net.http_post(url:='http://kong:8000/functions/v1/ensaio-eco', headers:=jsonb_build_object('Content-Type','application/json','Authorization','Bearer $SRV','apikey','$ANON'), body:='{\"name\":\"ensaio\"}'::jsonb)" 2>>"$DET")
 ST=""; for i in $(seq 1 30); do ST=$(SQL -c "select status_code from net._http_response where id=${RID:-0}"); [ -n "$ST" ] && break; sleep 2; done
 { echo "== pg_net id=$RID"; SQL -c "select id, status_code, left(coalesce(content,''),300), error_msg from net._http_response order by id"; } >> "$DET" 2>&1
-CC=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "apikey: $ANON" -H "Authorization: Bearer $SRV" -H 'Content-Type: application/json' -d '{"name":"ensaio"}' http://localhost:8000/functions/v1/hello)
-echo "hello pelo curl do runner: http $CC" >> "$DET"
+CC=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "apikey: $ANON" -H "Authorization: Bearer $SRV" -H 'Content-Type: application/json' -d '{"name":"ensaio"}' http://localhost:8000/functions/v1/ensaio-eco)
+echo "ensaio-eco pelo curl do runner: http $CC" >> "$DET"
 conf "pg_net chama EF local (caminho dos crons)" "${ST:-sem_resposta}" "200"
 
 # ---------- 10. boot das EFs reais (só as que tratam OPTIONS antes de qualquer lógica) ----------
