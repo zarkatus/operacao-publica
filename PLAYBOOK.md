@@ -18,6 +18,8 @@ A franquia de repo privado (2.000 min/mês, orçamento US$ 0 com Stop usage) esg
 - Lê o HEAD do ramo pelo `git ls-remote` com **deploy key só leitura** daquele repo (segredo único `DEPLOY_KEYS`, JSON repo→chave).
 - Compara com o `commit_hash` da última publicação de produção **bem-sucedida** no Pages (a verdade mora lá; sem arquivo de estado).
 - Se mudou: clone raso, roda as `etapas` de curadoria **do próprio repo** (lista de permissão, travas), `wrangler@3 pages deploy`.
+- Opcionais por site: `historico: true` (clone com histórico e tags, sem blobs antigos: a curadoria da plataforma usa `git describe`) e `caminhos` (pathspecs do git: commit que não toca neles fica "sem mudança de app", lembrado em `estado/falhas.json` → `_sem_app`, e não republica nem troca a versão de quem está usando).
+- Plataforma (`innovasphere-platform`, 03/10/2026): curadoria em `scripts/montar_publicar.sh` do próprio repo, provada idêntica ao `deploy.yml` antigo (313 arquivos, `diff -r` vazio); `caminhos` = complemento do que a curadoria exclui.
 - Publicar agora, sem esperar o ciclo: `gh workflow run publicar-sites.yml -R zarkatus/operacao-publica -f site=<repo>`.
 
 ## Onde ele morde

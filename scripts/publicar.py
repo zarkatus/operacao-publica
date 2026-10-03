@@ -9,6 +9,9 @@ Como funciona (site novo = 1 entrada em sites.json + 1 deploy key; zero código,
   1. para cada site, lê o HEAD do ramo no repo privado (deploy key SÓ LEITURA daquele repo);
   2. compara com o commit da última publicação de produção no próprio Cloudflare Pages (a verdade mora lá);
   3. se mudou (ou FORCAR=true), clona raso, roda as etapas de curadoria DO PRÓPRIO REPO e publica com wrangler.
+Opcionais por site: "historico": true clona com histórico e tags (sem blobs antigos; ex.: git describe na curadoria);
+"caminhos": [pathspecs do git] = só republica se algum commit desde a última publicação tocar neles (commit que só
+mexe em fonte interna fica "sem mudança de app" e não troca a versão de quem está usando).
 
 Log público MUDO por desenho (PAR-01a): saída de curadoria e wrangler vai a arquivo; o log mostra só
 contagens e "etapa N falhou". O detalhe da falha vai à central técnica (ntfy, AOP-01), nunca ao log.
@@ -91,14 +94,28 @@ def cauda(log, n=40):
         return ""
 
 
-def publicar(site, sha, env, tmp):
+def sem_mudanca_de_app(site, d, pub, got):
+    """True só quando há última publicação conhecida no clone e nenhum commit desde ela toca os `caminhos`."""
+    if FORCAR or not pub or not site.get("caminhos"):
+        return False
+    if subprocess.run(["git", "cat-file", "-e", f"{pub}^{{commit}}"], cwd=d, capture_output=True).returncode:
+        return False  # publicação anterior fora do histórico (deploy manual, force-push): publica
+    r = subprocess.run(["git", "diff", "--name-only", pub, got, "--", *site["caminhos"]], cwd=d,
+                       capture_output=True, text=True)
+    return r.returncode == 0 and not r.stdout.strip()
+
+
+def publicar(site, sha, env, tmp, pub=None):
     d = pathlib.Path(tmp) / "r"
     log = pathlib.Path(tmp) / "saida.log"
     url = f"git@github.com:zarkatus/{site['repo']}.git"
-    if rodar(["git", "clone", "-q", "--depth", "1", "--branch", site.get("ramo", "main"), url, str(d)],
-             tmp, env, log, timeout=300):
+    raso = ["--filter=blob:none"] if site.get("historico") else ["--depth", "1"]
+    if rodar(["git", "clone", "-q", *raso, "--branch", site.get("ramo", "main"), url, str(d)],
+             tmp, env, log, timeout=600):
         raise Falha("clone falhou", cauda(log))
     got = subprocess.run(["git", "rev-parse", "HEAD"], cwd=d, capture_output=True, text=True).stdout.strip()
+    if sem_mudanca_de_app(site, d, pub, got):
+        return got, None
     env_etapa = dict(env, GITHUB_WORKSPACE=str(d))  # script que lê a variável em vez do argumento acha o clone
     for i, etapa in enumerate(site["etapas"], 1):
         if rodar(etapa.replace("{dir}", str(d)), d, env_etapa, log, shell=True):
@@ -166,12 +183,21 @@ def main():
                     print(f"{s['repo']}: em dia ({rem[:7]})")
                     estado.pop(s["repo"], None)
                     continue
+                conferidos = estado.setdefault("_sem_app", {})
+                if conferidos.get(s["repo"]) == rem and not FORCAR:
+                    print(f"{s['repo']}: em dia ({rem[:7]} sem mudança de app desde {str(pub)[:7]})")
+                    continue
                 if rem and (estado.get(s["repo"]) or [None])[0] == rem and not FORCAR:
                     print(f"{s['repo']}: {rem[:7]} reprovou antes; aguarda commit novo (central já avisada)")
                     pendentes.append(s["repo"])
                     continue
-                got, n = publicar(s, rem, env, tmp)
+                got, n = publicar(s, rem, env, tmp, pub)
                 estado.pop(s["repo"], None)
+                if n is None:
+                    conferidos[s["repo"]] = got
+                    print(f"{s['repo']}: em dia ({got[:7]} sem mudança de app desde {str(pub)[:7]})")
+                    continue
+                conferidos.pop(s["repo"], None)
                 print(f"{s['repo']}: publicado {got[:7]} ({n} arquivos; antes {str(pub)[:7]})")
             except Exception as ex:
                 curto = ex.curto if isinstance(ex, Falha) else type(ex).__name__
