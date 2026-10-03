@@ -1,0 +1,37 @@
+name: Ensaio da reserva do Supabase
+
+# Fio fornecedores-resiliencia, S3b / T5.9 (03/10/2026). Supabase auto-hospedado oficial num runner efêmero do repo
+# público (minutos grátis), com a camada real da plataforma SEM dado e só dado sintético. Código em ensaio-supabase/.
+# Log mudo por desenho (só contagens e tempos); detalhe sai cifrado no artefato.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: ensaio-supabase
+  cancel-in-progress: false
+
+jobs:
+  ensaio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensaio
+        env:
+          ENSAIO_SCHEMA_KEY: ${{ secrets.ENSAIO_SCHEMA_KEY }}
+          DEPLOY_KEYS: ${{ secrets.DEPLOY_KEYS }}
+        run: bash ensaio-supabase/ensaio.sh 2>&1 | tee "$RUNNER_TEMP/saida.txt"
+      - name: Resumo
+        if: always()
+        run: |
+          { echo '```'; grep -E '^(OK|FALHOU|t_|RESUMO|erros_restore|public:|efs_|hosts_|buckets|supabase_commit|plataforma_commit)' "$RUNNER_TEMP/saida.txt" || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Detalhe cifrado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: detalhe-cifrado
+          path: detalhe.txt.enc
+          retention-days: 7
+          if-no-files-found: ignore
