@@ -116,6 +116,9 @@ while read -r EXT SCH; do
   fi
 done < <(grep -oE '^CREATE EXTENSION IF NOT EXISTS "?[a-z_0-9-]+"? WITH SCHEMA [a-z_]+' "$R/camada.sql" | sed -e 's/^CREATE EXTENSION IF NOT EXISTS //' -e 's/ WITH SCHEMA / /' -e 's/"//g')
 echo "extensoes_movidas_para_schema_da_producao=$MOV"
+# o arquivo de GRANTs (2ª parte da camada, começa em "-- gerado em") usa nome de função sem "public.", e o cabeçalho
+# do pg_dump zera o search_path: sem esta linha os 4635 GRANT/REVOKE de função falhavam (run 37135968867)
+sed -i '/^-- gerado em /i SET search_path TO public, extensions;' "$R/camada.sql"
 SQL -v ON_ERROR_STOP=0 < "$R/camada.sql" >/dev/null 2>"$R/restore.err"
 T_REST=$(seg); echo "t_camada_aplicada=${T_REST}s (camada em $((T_REST-T_UP))s)"
 NERR=$(grep -c 'ERROR:' "$R/restore.err"); echo "erros_restore=$NERR"
