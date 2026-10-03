@@ -1,0 +1,6 @@
+{
+  "_leia": "Um site por entrada. repo = repositório privado em zarkatus; ramo = ramo publicado; etapas = comandos de curadoria do PRÓPRIO repo, rodados na raiz do clone ({dir} = caminho do clone); saida = diretório curado; projeto = projeto do Cloudflare Pages; ramo_cf = ramo de produção no Pages. Cada repo precisa de uma deploy key SÓ LEITURA cuja chave privada fica no segredo DK_<REPO> (maiúsculas, hífen vira _).",
+  "sites": [
+    {"repo": "schifino-site", "ramo": "main", "etapas": ["bash curar-publicacao.sh", "bash desalojar.sh"], "saida": "_publica", "projeto": "schifino", "ramo_cf": "main"}
+  ]
+}

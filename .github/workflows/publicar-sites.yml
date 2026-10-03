@@ -1,0 +1,52 @@
+# Publica os sites do grupo a partir dos repositórios privados, rodando AQUI (repo público: Actions grátis e
+# ilimitado; CVO 03/10/2026). Lógica e regras: scripts/publicar.py e PLAYBOOK.md. Site novo: sites.json + DK_<REPO>.
+name: Publicar sites
+run-name: "Publicar sites${{ github.event.inputs.site && format(' · {0}', github.event.inputs.site) || '' }}"
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      site:
+        description: 'repo do site (vazio = todos)'
+        required: false
+        default: ''
+      forcar:
+        description: 'true = publica mesmo sem commit novo'
+        required: false
+        default: 'false'
+permissions:
+  contents: read
+  actions: write   # só para o passo de manter o agendamento vivo (abaixo)
+concurrency:
+  group: publicar-sites
+  cancel-in-progress: false
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Estado de falhas (evita reaviso a cada 5 min)
+        uses: actions/cache/restore@v4
+        with:
+          path: estado
+          key: estado-${{ github.run_id }}
+          restore-keys: estado-
+      - name: Publicar o que mudou
+        env:
+          SEGREDOS: ${{ toJSON(secrets) }}
+          SITE: ${{ github.event.inputs.site }}
+          FORCAR: ${{ github.event.inputs.forcar }}
+        run: python3 scripts/publicar.py
+      - name: Guardar estado
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: estado
+          key: estado-${{ github.run_id }}
+      - name: Manter o agendamento vivo (o GitHub desliga cron de repo público após 60 dias sem atividade)
+        if: always() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/publicar-sites.yml/enable" >/dev/null || echo "keepalive falhou (não bloqueia)"
