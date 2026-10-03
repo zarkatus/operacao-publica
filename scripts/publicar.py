@@ -99,8 +99,9 @@ def publicar(site, sha, env, tmp):
              tmp, env, log, timeout=300):
         raise Falha("clone falhou", cauda(log))
     got = subprocess.run(["git", "rev-parse", "HEAD"], cwd=d, capture_output=True, text=True).stdout.strip()
+    env_etapa = dict(env, GITHUB_WORKSPACE=str(d))  # script que lê a variável em vez do argumento acha o clone
     for i, etapa in enumerate(site["etapas"], 1):
-        if rodar(etapa.replace("{dir}", str(d)), d, env, log, shell=True):
+        if rodar(etapa.replace("{dir}", str(d)), d, env_etapa, log, shell=True):
             raise Falha(f"etapa {i} de curadoria reprovou", cauda(log))
     saida = d / site["saida"]
     n = sum(1 for p in saida.rglob("*") if p.is_file()) if saida.is_dir() else 0
