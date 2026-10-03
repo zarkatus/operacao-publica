@@ -165,23 +165,23 @@ def main():
                     print(f"{s['repo']}: em dia ({rem[:7]})")
                     estado.pop(s["repo"], None)
                     continue
-                if estado.get(s["repo"]) == rem and not FORCAR:
+                if rem and (estado.get(s["repo"]) or [None])[0] == rem and not FORCAR:
                     print(f"{s['repo']}: {rem[:7]} reprovou antes; aguarda commit novo (central já avisada)")
                     pendentes.append(s["repo"])
                     continue
                 got, n = publicar(s, rem, env, tmp)
                 estado.pop(s["repo"], None)
                 print(f"{s['repo']}: publicado {got[:7]} ({n} arquivos; antes {str(pub)[:7]})")
-            except Falha as f:
-                print(f"{s['repo']}: FALHOU, {f.curto} (detalhe na central técnica)")
-                falhas.append(f"{s['repo']}: {f.curto}\n{f.detalhe}")
-                if rem:
-                    estado[s["repo"]] = rem
             except Exception as ex:
-                print(f"{s['repo']}: FALHOU, {type(ex).__name__} (detalhe na central técnica)")
-                falhas.append(f"{s['repo']}: {type(ex).__name__}: {ex}")
-                if rem:
-                    estado[s["repo"]] = rem
+                curto = ex.curto if isinstance(ex, Falha) else type(ex).__name__
+                detalhe = ex.detalhe if isinstance(ex, Falha) else str(ex)
+                if estado.get(s["repo"]) == [rem, curto]:
+                    print(f"{s['repo']}: FALHOU de novo, {curto} (central já avisada)")
+                    pendentes.append(s["repo"])
+                else:
+                    print(f"{s['repo']}: FALHOU, {curto} (detalhe na central técnica)")
+                    falhas.append(f"{s['repo']}: {curto}\n{detalhe}")
+                estado[s["repo"]] = [rem, curto]
     arq_estado.parent.mkdir(exist_ok=True)
     arq_estado.write_text(json.dumps(estado), encoding="utf-8")
     if falhas:
@@ -190,7 +190,7 @@ def main():
                        f"Ação: corrigir a curadoria/credencial e redisparar (gh workflow run publicar-sites.yml "
                        f"-R zarkatus/operacao-publica -f site=<repo>).\nRun: {run}\n\n" + "\n\n".join(falhas))
     ping_vivo(bool(falhas or pendentes))
-    return 1 if falhas else 0
+    return 1 if (falhas or pendentes) else 0
 
 
 if __name__ == "__main__":
