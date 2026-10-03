@@ -11,7 +11,8 @@ A franquia de repo privado (2.000 min/mês, orçamento US$ 0 com Stop usage) esg
 ## O que roda aqui
 | workflow | o que faz | frequência |
 |---|---|---|
-| `publicar-sites.yml` | publica cada site de `sites.json` no Cloudflare Pages quando o ramo do repo privado tem commit novo | a cada 5 min + manual |
+| `publicar-sites.yml` | publica cada site de `sites.json` no Cloudflare Pages quando o ramo do repo privado tem commit novo; no fim, o agendador em corrente (`scripts/agendar.py`) dispara as rotinas do dia e o próximo ciclo | ~5 min (corrente) + manual |
+| `vigia-rodape.yml` | vigia do rodapé dos sites (código em `innconta-site/scripts/vigia_rodape`) via `scripts/rodar_rotina.py` | 11:30 UTC (corrente) + 14:30 `--rede` (cron do GitHub, só rede) |
 
 ## Como funciona o publicador (`scripts/publicar.py`)
 - Lê o HEAD do ramo pelo `git ls-remote` com **deploy key só leitura** daquele repo (segredo único `DEPLOY_KEYS`, JSON repo→chave).
@@ -23,6 +24,8 @@ A franquia de repo privado (2.000 min/mês, orçamento US$ 0 com Stop usage) esg
 - **Log público é mudo por desenho.** A curadoria imprime nomes de arquivos privados quando reprova; por isso toda saída de etapa e do wrangler vai a arquivo, e o log mostra só "publicado/em dia/FALHOU, etapa N". O detalhe vai à central técnica (ntfy, AOP-01). Nunca trocar isso por `print` da saída.
 - **As etapas não recebem os segredos do publicador** (o script tira todos do ambiente ao iniciar; segredos entram por nome, nunca `toJSON(secrets)`, que o GitHub marca como malicioso e segura a run).
 - Commit que reprovou fica em `estado/falhas.json` (cache do Actions): não é retentado nem reavisado a cada 5 min; volta com commit novo ou `forcar=true`.
+- **O cron do GitHub NÃO é confiável** (02/10: o vigia "das 11:30" rodou 16:43; 03/10 não rodou; o `*/5` deste repo levou >40 min sem 1º disparo). Agendamento real = corrente: cada ciclo dispara o próximo com o `GITHUB_TOKEN` (workflow_dispatch é o evento que esse token pode gerar). Rotina nova com horário: `horarios_utc` em `rotinas.json`. Sem PAT, sem pg_cron.
+- Rotinas de repo privado (`scripts/rodar_rotina.py`): mesmo log mudo; segredos da rotina entram por nome no workflow dela; os do operador saem do ambiente antes do código privado rodar.
 - Cron de repo público **é desligado pelo GitHub após 60 dias sem atividade**: o último passo reativa o próprio workflow a cada rodada agendada. Rede de fora: ping do Healthchecks (`HC_PING_PUBLICAR_SITES`), que avisa a central se o ciclo parar.
 - Ao migrar um site para cá, **desligar o `deploy.yml` do repo privado** (`gh workflow disable deploy.yml -R zarkatus/<repo>`): ele continua lá como reserva manual.
 - Gatilho em `pull_request` é proibido neste repo (forks); só `schedule` e `workflow_dispatch`.

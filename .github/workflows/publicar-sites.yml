@@ -4,7 +4,7 @@ name: Publicar sites
 run-name: "Publicar sites${{ github.event.inputs.site && format(' · {0}', github.event.inputs.site) || '' }}"
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/5 * * * *'   # só REINICIA a corrente se ela quebrar: o cron do GitHub atrasa horas (ver agendar.py)
   workflow_dispatch:
     inputs:
       site:
@@ -26,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Marcar início do ciclo
+        run: echo "INICIO_JOB=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
       - name: Estado de falhas (evita reaviso a cada 5 min)
         uses: actions/cache/restore@v4
@@ -49,8 +51,13 @@ jobs:
         with:
           path: estado
           key: estado-${{ github.run_id }}
+      - name: Agendador em corrente (rotinas do dia + dispara o próximo ciclo; scripts/agendar.py)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/agendar.py
       - name: Manter o agendamento vivo (o GitHub desliga cron de repo público após 60 dias sem atividade)
-        if: always() && github.event_name == 'schedule'
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/publicar-sites.yml/enable" >/dev/null || echo "keepalive falhou (não bloqueia)"

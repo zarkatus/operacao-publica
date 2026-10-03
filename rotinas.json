@@ -1,5 +1,5 @@
 {
-  "_leia": "Uma rotina por chave. repo/ramo = onde o código vive (privado, lido por deploy key só leitura em DEPLOY_KEYS); comandos = rodados na raiz do clone, em ordem, com os segredos que o workflow da rotina põe no ambiente por nome; workflow = arquivo .github/workflows que agenda a rotina. Rotina nova = entrada aqui + workflow pequeno + deploy key do repo.",
+  "_leia": "Uma rotina por chave. repo/ramo = onde o código vive (privado, lido por deploy key só leitura em DEPLOY_KEYS); comandos = rodados na raiz do clone, em ordem, com os segredos que o workflow da rotina põe no ambiente por nome; workflow = arquivo .github/workflows da rotina; horarios_utc = quando o agendador em corrente (scripts/agendar.py) a dispara, uma vez por dia por horário. Rotina nova = entrada aqui + workflow pequeno + deploy key do repo.",
   "rotinas": {
     "vigia-rodape": {
       "repo": "innconta-site",
@@ -11,6 +11,9 @@
         "python scripts/vigia_rodape/testar_vigia_rodape.py",
         "python scripts/vigia_rodape/testar_vigia_bot_fight.py",
         "python scripts/vigia_rodape/vigia_rodape.py vigiar $QA_FLAG $REDE"
+      ],
+      "horarios_utc": [
+        "11:30"
       ]
     }
   }
