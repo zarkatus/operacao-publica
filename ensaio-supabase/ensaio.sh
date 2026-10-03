@@ -106,9 +106,10 @@ SQL() { docker exec -e PGPASSWORD="$PGPASS" -i supabase-db psql -h localhost -U 
 # Sem isto public.gen_random_bytes não existe e tabelas, tipos e funções caem em cascata (run 37134777423).
 MOV=0
 while read -r EXT SCH; do
-  ATUAL=$(SQL -c "select n.nspname from pg_extension e join pg_namespace n on n.oid=e.extnamespace where e.extname='$EXT'")
+  # < /dev/null: o docker exec -i engolia o stdin do laço (run 37135425682 moveu 0)
+  ATUAL=$(SQL -c "select n.nspname from pg_extension e join pg_namespace n on n.oid=e.extnamespace where e.extname='$EXT'" < /dev/null)
   if [ -n "$ATUAL" ] && [ "$ATUAL" != "$SCH" ] && [ "$SCH" != pg_catalog ]; then
-    SQL -c "alter extension \"$EXT\" set schema $SCH" >/dev/null 2>>"$DET" && MOV=$((MOV+1)) || echo "nao_relocavel $EXT $ATUAL->$SCH" >> "$DET"
+    SQL -c "alter extension \"$EXT\" set schema $SCH" < /dev/null >/dev/null 2>>"$DET" && MOV=$((MOV+1)) || echo "nao_relocavel $EXT $ATUAL->$SCH" >> "$DET"
   fi
 done < <(grep -oE '^CREATE EXTENSION IF NOT EXISTS "?[a-z_0-9-]+"? WITH SCHEMA [a-z_]+' "$R/camada.sql" | sed -E 's/.*EXISTS "?([a-z_0-9-]+)"? WITH SCHEMA ([a-z_]+)/ /')
 echo "extensoes_movidas_para_schema_da_producao=$MOV"
@@ -179,7 +180,7 @@ SQL -c "select vault.create_secret('valor-ensaio-123','ensaio_s3b')" >/dev/null 
 conf "vault cifra e decifra" "$(SQL -c "select decrypted_secret from vault.decrypted_secrets where name='ensaio_s3b'")" "valor-ensaio-123"
 J=$(SQL -c "select cron.schedule('ensaio_s3b','* * * * *','select 1')" 2>>"$DET"); [ -n "$J" ] && ok "pg_cron agenda (job $J)" || nok "pg_cron"
 SQL -c "select cron.unschedule('ensaio_s3b')" >/dev/null 2>&1
-RID=$(SQL -c "select net.http_post(url:='http://kong:8000/functions/v1/hello', headers:=jsonb_build_object('Content-Type','application/json','Authorization','Bearer $SRV','apikey','$SRV'), body:='{\"name\":\"ensaio\"}'::jsonb)" 2>>"$DET")
+RID=$(SQL -c "select net.http_post(url:='http://kong:8000/functions/v1/hello', headers:=jsonb_build_object('Content-Type','application/json','Authorization','Bearer $SRV','apikey','$ANON'), body:='{\"name\":\"ensaio\"}'::jsonb)" 2>>"$DET")
 ST=""; for i in $(seq 1 30); do ST=$(SQL -c "select status_code from net._http_response where id=${RID:-0}"); [ -n "$ST" ] && break; sleep 2; done
 conf "pg_net chama EF local (caminho dos crons)" "${ST:-sem_resposta}" "200"
 
