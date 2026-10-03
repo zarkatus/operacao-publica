@@ -54,6 +54,8 @@ for i, l in enumerate(linhas):
     if "=" in l and not l.startswith("#"):
         k, v = l.split("=", 1); vals[k] = v
         if k == "ENABLE_EMAIL_AUTOCONFIRM": linhas[i] = "ENABLE_EMAIL_AUTOCONFIRM=true"
+        # o .env oficial fixa COMPOSE_FILE: sem isto o override da trava de saída NÃO é carregado (run 37134777423)
+        if k == "COMPOSE_FILE": linhas[i] = "COMPOSE_FILE=" + v + ":docker-compose.override.yml"
 env.write_text("\n".join(linhas) + "\n")
 for k, f in (("ANON_KEY", "anon"), ("SERVICE_ROLE_KEY", "srv"), ("POSTGRES_PASSWORD", "pgpass")):
     (r / f).write_text(vals[k])
@@ -88,7 +90,8 @@ docker compose up -d >"$R/up.log" 2>&1 || { echo "compose up com erro"; tail -c 
 H="apikey: $ANON"
 espera() { for i in $(seq 1 90); do c=$(curl -s -o /dev/null -w '%{http_code}' -H "$H" "$1"); [ "$c" = 200 ] && return 0; sleep 2; done; return 1; }
 espera http://localhost:8000/auth/v1/health && ok "auth no ar" || nok "auth no ar"
-espera http://localhost:8000/rest/v1/ && ok "rest no ar" || nok "rest no ar"
+esperar() { for i in $(seq 1 90); do c=$(curl -s -o /dev/null -w '%{http_code}' -H "$H" -H "Authorization: Bearer $ANON" "$1"); [[ $c =~ ^[234] ]] && return 0; sleep 2; done; return 1; }
+esperar http://localhost:8000/rest/v1/profiles?limit=0 && ok "rest no ar" || nok "rest no ar"
 espera http://localhost:8000/storage/v1/status && ok "storage no ar" || nok "storage no ar"
 T_UP=$(seg); echo "t_servico_vazio=${T_UP}s (desde o pull: $((T_UP-T_PULL))s)"
 docker compose ps --format '{{.Service}}={{.State}}' | sort | tr '\n' ' '; echo
@@ -99,11 +102,21 @@ conf "trava de saída no db (prod resolve para)" "$B" "0.0.0.0"
 
 # ---------- 5. aplica a camada ----------
 SQL() { docker exec -e PGPASSWORD="$PGPASS" -i supabase-db psql -h localhost -U supabase_admin -d postgres -X -qtA "$@"; }
+# extensões no MESMO schema da produção (lá pgcrypto, pg_trgm etc. moram em public; aqui vêm em extensions).
+# Sem isto public.gen_random_bytes não existe e tabelas, tipos e funções caem em cascata (run 37134777423).
+MOV=0
+while read -r EXT SCH; do
+  ATUAL=$(SQL -c "select n.nspname from pg_extension e join pg_namespace n on n.oid=e.extnamespace where e.extname='$EXT'")
+  if [ -n "$ATUAL" ] && [ "$ATUAL" != "$SCH" ] && [ "$SCH" != pg_catalog ]; then
+    SQL -c "alter extension \"$EXT\" set schema $SCH" >/dev/null 2>>"$DET" && MOV=$((MOV+1)) || echo "nao_relocavel $EXT $ATUAL->$SCH" >> "$DET"
+  fi
+done < <(grep -oE '^CREATE EXTENSION IF NOT EXISTS "?[a-z_0-9-]+"? WITH SCHEMA [a-z_]+' "$R/camada.sql" | sed -E 's/.*EXISTS "?([a-z_0-9-]+)"? WITH SCHEMA ([a-z_]+)/ /')
+echo "extensoes_movidas_para_schema_da_producao=$MOV"
 SQL -v ON_ERROR_STOP=0 < "$R/camada.sql" >/dev/null 2>"$R/restore.err"
 T_REST=$(seg); echo "t_camada_aplicada=${T_REST}s (camada em $((T_REST-T_UP))s)"
 NERR=$(grep -c 'ERROR:' "$R/restore.err"); echo "erros_restore=$NERR"
 echo "categorias de erro (nomes trocados por <x>):"
-grep -oE 'ERROR: .*' "$R/restore.err" | sed -E 's/"[^"]*"/<x>/g; s/[0-9]+/N/g' | sort | uniq -c | sort -rn | head -10
+grep -oE 'ERROR: .*' "$R/restore.err" | sed -E 's/"[^"]*"/<x>/g; s/[0-9]+/N/g' | sort | uniq -c | sort -rn | awk 'NR<=12'
 { echo "== erros do restore"; grep -A1 'ERROR:' "$R/restore.err" | head -400; } >> "$DET"
 SQL -c "NOTIFY pgrst, 'reload schema';" >/dev/null
 read -r NT NRLS NPOL NFN <<<"$(SQL -F' ' -c "select (select count(*) from pg_tables where schemaname='public'), (select count(*) from pg_tables where schemaname='public' and rowsecurity), (select count(*) from pg_policies where schemaname in ('public','storage')), (select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public')")"
@@ -145,7 +158,8 @@ conf "rpc fn_user_pode_acessar_projeto(ensaio_b) como A" "$(rpc ensaio_b)" "fals
 # controle negativo: o teste tem de enxergar a mudança de permissão
 SQL -c "update public.innovasphere_data set value='[{\"email\":\"ensaio-a@example.com\",\"_canAccessAll\":true,\"ativo\":true}]' where key='viewer_profiles'" >/dev/null
 conf "controle negativo: A com _canAccessAll vê" "$(conta "$TA")" "2"
-SQL -c "update public.innovasphere_data set value='[{\"email\":\"ensaio-a@example.com\",\"projId\":\"ensaio_a\",\"ativo\":false}]' where key='viewer_profiles'" >/dev/null
+# delete+insert: o UPDATE passa pela guarda tg_viewer_profiles_clobber_guard (funde o perfil antigo) e mascarava o teste
+SQL -c "delete from public.innovasphere_data where key='viewer_profiles'; insert into public.innovasphere_data(key,value) values ('viewer_profiles','[{\"email\":\"ensaio-a@example.com\",\"projId\":\"ensaio_a\",\"ativo\":false}]')" >/dev/null 2>>"$DET"
 conf "perfil desativado não vê nada" "$(conta "$TA")" "0"
 
 # ---------- 8. Storage (buckets reais, objeto sintético) ----------
@@ -165,7 +179,7 @@ SQL -c "select vault.create_secret('valor-ensaio-123','ensaio_s3b')" >/dev/null 
 conf "vault cifra e decifra" "$(SQL -c "select decrypted_secret from vault.decrypted_secrets where name='ensaio_s3b'")" "valor-ensaio-123"
 J=$(SQL -c "select cron.schedule('ensaio_s3b','* * * * *','select 1')" 2>>"$DET"); [ -n "$J" ] && ok "pg_cron agenda (job $J)" || nok "pg_cron"
 SQL -c "select cron.unschedule('ensaio_s3b')" >/dev/null 2>&1
-RID=$(SQL -c "select net.http_post(url:='http://kong:8000/functions/v1/hello', headers:=jsonb_build_object('Content-Type','application/json','Authorization','Bearer $SRV'), body:='{\"name\":\"ensaio\"}'::jsonb)" 2>>"$DET")
+RID=$(SQL -c "select net.http_post(url:='http://kong:8000/functions/v1/hello', headers:=jsonb_build_object('Content-Type','application/json','Authorization','Bearer $SRV','apikey','$SRV'), body:='{\"name\":\"ensaio\"}'::jsonb)" 2>>"$DET")
 ST=""; for i in $(seq 1 30); do ST=$(SQL -c "select status_code from net._http_response where id=${RID:-0}"); [ -n "$ST" ] && break; sleep 2; done
 conf "pg_net chama EF local (caminho dos crons)" "${ST:-sem_resposta}" "200"
 

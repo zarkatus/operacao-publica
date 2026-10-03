@@ -19,6 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Ensaio
+        shell: bash   # liga o pipefail: sem ele o tee engolia a falha (run 37134777423 saiu success com 5 falhas)
         env:
           ENSAIO_SCHEMA_KEY: ${{ secrets.ENSAIO_SCHEMA_KEY }}
           DEPLOY_KEYS: ${{ secrets.DEPLOY_KEYS }}
