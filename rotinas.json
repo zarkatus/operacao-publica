@@ -1,0 +1,17 @@
+{
+  "_leia": "Uma rotina por chave. repo/ramo = onde o código vive (privado, lido por deploy key só leitura em DEPLOY_KEYS); comandos = rodados na raiz do clone, em ordem, com os segredos que o workflow da rotina põe no ambiente por nome; workflow = arquivo .github/workflows que agenda a rotina. Rotina nova = entrada aqui + workflow pequeno + deploy key do repo.",
+  "rotinas": {
+    "vigia-rodape": {
+      "repo": "innconta-site",
+      "ramo": "main",
+      "workflow": "vigia-rodape.yml",
+      "timeout_s": 1500,
+      "comandos": [
+        "pip install -q playwright",
+        "python scripts/vigia_rodape/testar_vigia_rodape.py",
+        "python scripts/vigia_rodape/testar_vigia_bot_fight.py",
+        "python scripts/vigia_rodape/vigia_rodape.py vigiar $QA_FLAG $REDE"
+      ]
+    }
+  }
+}

@@ -1,0 +1,40 @@
+# Vigia diário do rodapé dos sites do grupo (ordem do CVO 30/09/2026). Código em zarkatus/innconta-site
+# (scripts/vigia_rodape/); roda AQUI desde 03/10/2026 (repo público, Actions grátis; ordem do CVO: custo zero).
+# Registro em ic_aviso_log (canal vigia_rodape); e-mail à central só com desvio; dead-man fora do GitHub:
+# pg_cron `vigia_rodape_mudo` (30 h sem registro). 14:30 UTC = 2a tentativa (--rede: só roda se não houve registro em 8 h).
+name: Vigia do rodape
+run-name: "Vigia do rodape${{ github.event.inputs.qa == 'true' && ' (qa)' || '' }}${{ github.event.schedule && format(' · {0}', github.event.schedule) || '' }}"
+on:
+  schedule:
+    - cron: '30 11 * * *'
+    - cron: '30 14 * * *'
+  workflow_dispatch:
+    inputs:
+      qa:
+        description: 'true = prova adversária (canal vigia_rodape_qa)'
+        required: false
+        default: 'false'
+permissions:
+  contents: read
+concurrency:
+  group: vigia-rodape
+  cancel-in-progress: false
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Rodar a rotina (log mudo; falha vai à central técnica)
+        env:
+          DEPLOY_KEYS: ${{ secrets.DEPLOY_KEYS }}
+          NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
+          SB_URL: ${{ secrets.SUPABASE_URL }}
+          SB_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          QA_FLAG: ${{ github.event.inputs.qa == 'true' && '--qa' || '' }}
+          REDE: ${{ github.event.schedule == '30 14 * * *' && '--rede' || '' }}
+        run: python3 scripts/rodar_rotina.py vigia-rodape
