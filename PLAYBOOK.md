@@ -14,21 +14,21 @@ A franquia de repo privado (2.000 min/mês, orçamento US$ 0 com Stop usage) esg
 | `publicar-sites.yml` | publica cada site de `sites.json` no Cloudflare Pages quando o ramo do repo privado tem commit novo | a cada 5 min + manual |
 
 ## Como funciona o publicador (`scripts/publicar.py`)
-- Lê o HEAD do ramo pelo `git ls-remote` com **deploy key só leitura** daquele repo (segredo `DK_<REPO>`).
+- Lê o HEAD do ramo pelo `git ls-remote` com **deploy key só leitura** daquele repo (segredo único `DEPLOY_KEYS`, JSON repo→chave).
 - Compara com o `commit_hash` da última publicação de produção **bem-sucedida** no Pages (a verdade mora lá; sem arquivo de estado).
 - Se mudou: clone raso, roda as `etapas` de curadoria **do próprio repo** (lista de permissão, travas), `wrangler@3 pages deploy`.
 - Publicar agora, sem esperar o ciclo: `gh workflow run publicar-sites.yml -R zarkatus/operacao-publica -f site=<repo>`.
 
 ## Onde ele morde
 - **Log público é mudo por desenho.** A curadoria imprime nomes de arquivos privados quando reprova; por isso toda saída de etapa e do wrangler vai a arquivo, e o log mostra só "publicado/em dia/FALHOU, etapa N". O detalhe vai à central técnica (ntfy, AOP-01). Nunca trocar isso por `print` da saída.
-- **As etapas não recebem os segredos do publicador** (`SEGREDOS` sai do ambiente antes de rodar código do repo privado).
+- **As etapas não recebem os segredos do publicador** (o script tira todos do ambiente ao iniciar; segredos entram por nome, nunca `toJSON(secrets)`, que o GitHub marca como malicioso e segura a run).
 - Commit que reprovou fica em `estado/falhas.json` (cache do Actions): não é retentado nem reavisado a cada 5 min; volta com commit novo ou `forcar=true`.
 - Cron de repo público **é desligado pelo GitHub após 60 dias sem atividade**: o último passo reativa o próprio workflow a cada rodada agendada. Rede de fora: ping do Healthchecks (`HC_PING_PUBLICAR_SITES`), que avisa a central se o ciclo parar.
 - Ao migrar um site para cá, **desligar o `deploy.yml` do repo privado** (`gh workflow disable deploy.yml -R zarkatus/<repo>`): ele continua lá como reserva manual.
 - Gatilho em `pull_request` é proibido neste repo (forks); só `schedule` e `workflow_dispatch`.
 
 ## Segredos (nomes; valores no cofre, índice em INVENTARIO.md)
-`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (cofre `cloudflare-pages-deploy.json`), `NTFY_TOPICO` (`ntfy-central-tecnica.txt`), `HC_PING_PUBLICAR_SITES`, `DK_<REPO>` (um por site, `_ces-secrets/deploy-keys-operacao-publica/`).
+`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (cofre `de-documentos-12set/innovasphere-platform/.env.local`, fonte única desde a rotação de 13/09), `NTFY_TOPICO` (`ntfy-central-tecnica.txt`), `HC_PING_PUBLICAR_SITES`, `DEPLOY_KEYS` (JSON montado de `_ces-secrets/deploy-keys-operacao-publica/<repo>`).
 
 ## Histórico
 - 03/10/2026 (sessão fio fornecedores-resiliencia): criado; piloto `schifino-site`.

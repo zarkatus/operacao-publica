@@ -24,7 +24,12 @@ import urllib.request
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 SITES = json.loads((RAIZ / "sites.json").read_text(encoding="utf-8"))["sites"]
-SEG = json.loads(os.environ.get("SEGREDOS") or "{}")
+_NOMES = ("CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "NTFY_TOPICO", "HC_PING_PUBLICAR_SITES")
+SEG = {n: os.environ.pop(n, "") for n in _NOMES}  # sai do ambiente: etapas do repo privado nunca herdam
+try:
+    CHAVES = json.loads(os.environ.pop("DEPLOY_KEYS", "") or "{}")  # {"<repo>": "<chave privada só leitura>"}
+except ValueError:
+    CHAVES = {}
 CF_TOKEN = SEG.get("CLOUDFLARE_API_TOKEN", "")
 CF_CONTA = SEG.get("CLOUDFLARE_ACCOUNT_ID", "")
 ALVO = (os.environ.get("SITE") or "").strip()
@@ -37,19 +42,14 @@ class Falha(Exception):
         self.curto, self.detalhe = curto, detalhe
 
 
-def nome_chave(repo):
-    return "DK_" + repo.upper().replace("-", "_")
-
-
 def env_ssh(repo, tmp):
-    k = SEG.get(nome_chave(repo))
+    k = CHAVES.get(repo)
     if not k:
-        raise Falha(f"segredo {nome_chave(repo)} ausente")
+        raise Falha("deploy key ausente em DEPLOY_KEYS")
     p = pathlib.Path(tmp) / "k"
     p.write_text(k.strip() + "\n", encoding="utf-8")
     p.chmod(0o600)
     e = dict(os.environ)
-    e.pop("SEGREDOS", None)  # etapas do repo nunca recebem os segredos do publicador
     e["GIT_SSH_COMMAND"] = (f"ssh -i {p} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new "
                             f"-o UserKnownHostsFile={tmp}/kh")
     return e
