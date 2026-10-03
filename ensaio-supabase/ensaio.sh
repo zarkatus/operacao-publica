@@ -182,6 +182,9 @@ J=$(SQL -c "select cron.schedule('ensaio_s3b','* * * * *','select 1')" 2>>"$DET"
 SQL -c "select cron.unschedule('ensaio_s3b')" >/dev/null 2>&1
 RID=$(SQL -c "select net.http_post(url:='http://kong:8000/functions/v1/hello', headers:=jsonb_build_object('Content-Type','application/json','Authorization','Bearer $SRV','apikey','$ANON'), body:='{\"name\":\"ensaio\"}'::jsonb)" 2>>"$DET")
 ST=""; for i in $(seq 1 30); do ST=$(SQL -c "select status_code from net._http_response where id=${RID:-0}"); [ -n "$ST" ] && break; sleep 2; done
+{ echo "== pg_net id=$RID"; SQL -c "select id, status_code, left(coalesce(content,''),300), error_msg from net._http_response order by id"; } >> "$DET" 2>&1
+CC=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "apikey: $ANON" -H "Authorization: Bearer $SRV" -H 'Content-Type: application/json' -d '{"name":"ensaio"}' http://localhost:8000/functions/v1/hello)
+echo "hello pelo curl do runner: http $CC" >> "$DET"
 conf "pg_net chama EF local (caminho dos crons)" "${ST:-sem_resposta}" "200"
 
 # ---------- 10. boot das EFs reais (só as que tratam OPTIONS antes de qualquer lógica) ----------
