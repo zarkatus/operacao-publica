@@ -1,10 +1,18 @@
-name: Ensaio da reserva do Supabase
-
 # Fio fornecedores-resiliencia, S3b / T5.9 (03/10/2026). Supabase auto-hospedado oficial num runner efêmero do repo
 # público (minutos grátis), com a camada real da plataforma SEM dado e só dado sintético. Código em ensaio-supabase/.
 # Log mudo por desenho (só contagens e tempos); detalhe sai cifrado no artefato.
+# Desde 04/10/2026 (T5.10 p3): MENSAL pelo agendador em corrente (rotinas.json "intervalo_dias": 30, scripts/agendar.py;
+# o cron do GitHub pula dias), camada baixada da VM do Google (gerada todo dia do dump) e falha avisa a central técnica
+# por ntfy (AOP-01). simular_falha=true = controle negativo do aviso (não sobe nada; o agendador ignora esse run).
+name: Ensaio da reserva do Supabase
+run-name: "Ensaio da reserva do Supabase${{ github.event.inputs.simular_falha == 'true' && ' (simulacao de falha)' || '' }}"
 on:
   workflow_dispatch:
+    inputs:
+      simular_falha:
+        description: 'true = controle negativo: falha de propósito para provar o aviso à central'
+        required: false
+        default: 'false'
 
 permissions:
   contents: read
@@ -18,16 +26,21 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - name: Simulação de falha (controle negativo do aviso)
+        if: github.event.inputs.simular_falha == 'true'
+        run: echo "FALHOU simulacao de falha pedida no disparo" | tee "$RUNNER_TEMP/saida.txt"; exit 1
       - name: Ensaio
         shell: bash   # liga o pipefail: sem ele o tee engolia a falha (run 37134777423 saiu success com 5 falhas)
         env:
           ENSAIO_SCHEMA_KEY: ${{ secrets.ENSAIO_SCHEMA_KEY }}
           DEPLOY_KEYS: ${{ secrets.DEPLOY_KEYS }}
+          CAMADA_SSH_KEY: ${{ secrets.CAMADA_SSH_KEY }}
+          CAMADA_SSH_KH: ${{ secrets.CAMADA_SSH_KH }}
         run: bash ensaio-supabase/ensaio.sh 2>&1 | tee "$RUNNER_TEMP/saida.txt"
       - name: Resumo
         if: always()
         run: |
-          { echo '```'; grep -E '^(OK|FALHOU|t_|RESUMO|erros_restore|public:|efs_|hosts_|buckets|supabase_commit|plataforma_commit)' "$RUNNER_TEMP/saida.txt" || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo '```'; grep -E '^(OK|FALHOU|t_|RESUMO|camada_|erros_restore|public:|efs_|hosts_|buckets|supabase_commit|plataforma_commit)' "$RUNNER_TEMP/saida.txt" || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Detalhe cifrado
         if: always()
         uses: actions/upload-artifact@v4
@@ -36,3 +49,18 @@ jobs:
           path: detalhe.txt.enc
           retention-days: 7
           if-no-files-found: ignore
+      - name: Avisar a central técnica (falhou)
+        if: failure()
+        env:
+          NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TITULO: "operacao-publica: ensaio do Supabase falhou${{ github.event.inputs.simular_falha == 'true' && ' (SIMULACAO)' || '' }}"
+        run: |
+          [ -n "$NTFY_TOPICO" ] || { echo "sem NTFY_TOPICO: aviso não enviado"; exit 0; }
+          OBS=$(grep -E '^(FALHOU|RESUMO|camada_)' "$RUNNER_TEMP/saida.txt" 2>/dev/null | head -15)
+          [ -n "$OBS" ] || OBS="sem saída: falhou antes do ensaio"
+          { echo "O que quebrou: ensaio mensal da reserva do Supabase (auto-hospedado) falhou."
+             echo "Valor observado:"; echo "$OBS"; echo
+             echo "Ação: abrir o run e ler o resumo e o detalhe cifrado (artefato); se a camada falhou, ver /var/log/camada-ensaio.log na VM do Google; corrigir e redisparar: gh workflow run ensaio-supabase.yml -R zarkatus/operacao-publica"
+             echo "Run: $RUN"; } > "$RUNNER_TEMP/aviso.txt"
+          curl -s -m 20 -o /dev/null -w 'ntfy http=%{http_code}\n' -H "Title: $TITULO" -H "Priority: 4" -H "Tags: warning"             --data-binary @"$RUNNER_TEMP/aviso.txt" "https://ntfy.sh/$NTFY_TOPICO"

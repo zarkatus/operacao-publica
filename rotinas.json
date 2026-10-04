@@ -1,5 +1,5 @@
 {
-  "_leia": "Uma rotina por chave. repo/ramo = onde o código vive (privado, lido por deploy key só leitura em DEPLOY_KEYS); comandos = rodados na raiz do clone, em ordem, com os segredos que o workflow da rotina põe no ambiente por nome; workflow = arquivo .github/workflows da rotina; horarios_utc = quando o agendador em corrente (scripts/agendar.py) a dispara, uma vez por dia por horário. Rotina nova = entrada aqui + workflow pequeno + deploy key do repo.",
+  "_leia": "Uma rotina por chave. repo/ramo = onde o código vive (privado, lido por deploy key só leitura em DEPLOY_KEYS); comandos = rodados na raiz do clone, em ordem, com os segredos que o workflow da rotina põe no ambiente por nome; workflow = arquivo .github/workflows da rotina; horarios_utc = quando o agendador em corrente (scripts/agendar.py) a dispara, uma vez por dia por horário. Rotina nova = entrada aqui + workflow pequeno + deploy key do repo. Rotina que roda no PRÓPRIO repo (sem repo/comandos, ex.: ensaio-supabase) só usa workflow/horarios_utc; \"intervalo_dias\": N = no máximo um run real a cada N dias, disparado no 1º horário devido.",
   "rotinas": {
     "vigia-rodape": {
       "repo": "innconta-site",
@@ -15,6 +15,14 @@
       "horarios_utc": [
         "11:30"
       ]
+    },
+    "ensaio-supabase": {
+      "workflow": "ensaio-supabase.yml",
+      "horarios_utc": [
+        "09:00"
+      ],
+      "intervalo_dias": 30,
+      "_nota": "T5.10 p3 (04/10/2026): ensaio mensal da reserva do Supabase; código em ensaio-supabase/, não usa rodar_rotina.py"
     }
   }
 }

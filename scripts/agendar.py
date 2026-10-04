@@ -3,7 +3,8 @@
 
 Por que (03/10/2026): o cron do GitHub atrasa horas ou pula (o vigia do rodapé "das 11:30" rodou 16:43 em 02/10 e
 não rodou em 03/10). Em vez de depender dele, cada ciclo:
-  1. dispara as rotinas de rotinas.json cujo horário UTC já passou hoje e que ainda não têm run hoje depois dele;
+  1. dispara as rotinas de rotinas.json cujo horário UTC já passou hoje e que ainda não têm run hoje depois dele
+     (com "intervalo_dias": N, nenhum run real nos últimos N dias);
   2. espera até completar ~CICLO_S desde o início do job;
   3. dispara o próximo ciclo do publicar-sites (workflow_dispatch com o GITHUB_TOKEN, o único evento que esse
      token pode gerar e que cria run nova).
@@ -35,8 +36,11 @@ def rotinas_devidas(agora):
             alvo = agora.replace(hour=hh, minute=mm, second=0, microsecond=0)
             if agora < alvo:
                 continue
-            q = gh("api", f"repos/{REPO}/actions/workflows/{r['workflow']}/runs?created=%3E%3D{alvo.strftime('%Y-%m-%dT%H:%M:%SZ')}&per_page=1",
-                   "-q", ".total_count")
+            # intervalo_dias (04/10/2026, ensaio mensal): devida se não houve run REAL nos últimos N dias (run de
+            # simulação não conta); assim um dia em que a corrente quebrou não faz perder o mês, ela recupera no seguinte.
+            desde = alvo - dt.timedelta(days=r["intervalo_dias"]) if r.get("intervalo_dias") else alvo
+            q = gh("api", f"repos/{REPO}/actions/workflows/{r['workflow']}/runs?created=%3E%3D{desde.strftime('%Y-%m-%dT%H:%M:%SZ')}&per_page=30",
+                   "-q", '[.workflow_runs[] | select(.display_title | test("simula") | not)] | length')
             if q.returncode:
                 print(f"agendador: não consegui ler runs de {nome} (rc={q.returncode}); tento no próximo ciclo")
                 continue
