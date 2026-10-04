@@ -1,143 +1,153 @@
 {
-  "_leia": "Um site por entrada. repo = repositório privado em zarkatus; ramo = ramo publicado; etapas = comandos de curadoria do PRÓPRIO repo, rodados na raiz do clone ({dir} = caminho do clone); saida = diretório curado; projeto = projeto do Cloudflare Pages; ramo_cf = ramo de produção no Pages. Cada repo precisa de uma deploy key SÓ LEITURA cuja chave privada entra no segredo DEPLOY_KEYS (JSON repo->chave), montado do cofre. Opcionais: historico=true (clone com histórico e tags), caminhos=[pathspecs do git] (só republica se commit desde a última publicação tocar neles).",
-  "sites": [
-    {
-      "repo": "schifino-site",
-      "ramo": "main",
-      "etapas": [
-        "bash curar-publicacao.sh",
-        "bash desalojar.sh"
-      ],
-      "saida": "_publica",
-      "projeto": "schifino",
-      "ramo_cf": "main"
-    },
-    {
-      "repo": "ces-site",
-      "ramo": "main",
-      "etapas": [
-        "sh scripts/montar_publicar.sh {dir}"
-      ],
-      "saida": ".publicar",
-      "projeto": "ces",
-      "ramo_cf": "main"
-    },
-    {
-      "repo": "fairco-site",
-      "ramo": "main",
-      "etapas": [
-        "sh scripts/montar_publicar.sh {dir}"
-      ],
-      "saida": ".publicar",
-      "projeto": "fairco-novo",
-      "ramo_cf": "main"
-    },
-    {
-      "repo": "validaauditoria-site",
-      "ramo": "main",
-      "etapas": [
-        "sh scripts/montar_publicar.sh {dir}"
-      ],
-      "saida": ".publicar",
-      "projeto": "validaauditoria",
-      "ramo_cf": "main"
-    },
-    {
-      "repo": "innovasphere-site",
-      "ramo": "master",
-      "etapas": [
-        "bash scripts/montar_publicar.sh {dir}",
-        "bash desalojar.sh"
-      ],
-      "saida": "_publica",
-      "projeto": "siteinnovasphere",
-      "ramo_cf": "main"
-    },
-    {
-      "repo": "inncorporate-site",
-      "ramo": "main",
-      "etapas": [
-        "bash curar-publicacao.sh",
-        "bash desalojar.sh"
-      ],
-      "saida": "_publica",
-      "projeto": "inncorporate",
-      "ramo_cf": "main"
-    },
-    {
-      "repo": "incorpbuilding-site",
-      "ramo": "main",
-      "etapas": [
-        "sh scripts/montar_publicar.sh {dir}"
-      ],
-      "saida": ".publicar",
-      "projeto": "incorpbuilding",
-      "ramo_cf": "main"
-    },
-    {
-      "repo": "incorpmine-site",
-      "ramo": "main",
-      "etapas": [
-        "sh scripts/montar_publicar.sh {dir}"
-      ],
-      "saida": ".publicar",
-      "projeto": "incorpmine",
-      "ramo_cf": "main"
-    },
-    {
-      "repo": "innovapeople",
-      "ramo": "main",
-      "etapas": [
-        "bash curar-publicacao.sh",
-        "sh scripts/montar_publicar.sh .",
-        "bash desalojar.sh"
-      ],
-      "saida": "_publica",
-      "projeto": "innovapeople",
-      "ramo_cf": "main"
-    },
-    {
-      "repo": "inncorpower-site",
-      "ramo": "main",
-      "etapas": [
-        "sh scripts/montar_publicar.sh {dir}"
-      ],
-      "saida": ".publicar",
-      "projeto": "inncorpower",
-      "ramo_cf": "main"
-    },
-    {
-      "repo": "innovasphere-platform",
-      "ramo": "main",
-      "historico": true,
-      "caminhos": [
-        ".",
-        ":(exclude)supabase",
-        ":(exclude)sql",
-        ":(exclude)docs",
-        ":(exclude)decisions",
-        ":(exclude)archive",
-        ":(exclude)OUTPUTS",
-        ":(exclude)audit",
-        ":(exclude)status",
-        ":(exclude)deploy",
-        ":(exclude)integrations",
-        ":(exclude)runbooks",
-        ":(exclude).claude",
-        ":(exclude).github",
-        ":(exclude,glob)*.md",
-        ":(exclude,glob)*.sql",
-        ":(exclude,glob)*.ps1",
-        ":(exclude,glob)*.cmd",
-        ":(exclude)package.json",
-        ":(exclude)package-lock.json"
-      ],
-      "etapas": [
-        "bash scripts/montar_publicar.sh {dir}"
-      ],
-      "saida": ".publicar",
-      "projeto": "plataformainnovasphere",
-      "ramo_cf": "main"
-    }
-  ]
+ "_leia": "Um site por entrada. repo = repositório privado em zarkatus; ramo = ramo publicado; etapas = comandos de curadoria do PRÓPRIO repo, rodados na raiz do clone ({dir} = caminho do clone); saida = diretório curado; projeto = projeto do Cloudflare Pages; ramo_cf = ramo de produção no Pages. Cada repo precisa de uma deploy key SÓ LEITURA cuja chave privada entra no segredo DEPLOY_KEYS (JSON repo->chave), montado do cofre. Opcionais: historico=true (clone com histórico e tags), caminhos=[pathspecs do git] (só republica se commit desde a última publicação tocar neles).",
+ "sites": [
+  {
+   "repo": "schifino-site",
+   "ramo": "main",
+   "etapas": [
+    "bash curar-publicacao.sh",
+    "bash desalojar.sh"
+   ],
+   "saida": "_publica",
+   "projeto": "schifino",
+   "ramo_cf": "main"
+  },
+  {
+   "repo": "ces-site",
+   "ramo": "main",
+   "etapas": [
+    "sh scripts/montar_publicar.sh {dir}"
+   ],
+   "saida": ".publicar",
+   "projeto": "ces",
+   "ramo_cf": "main"
+  },
+  {
+   "repo": "fairco-site",
+   "ramo": "main",
+   "etapas": [
+    "sh scripts/montar_publicar.sh {dir}"
+   ],
+   "saida": ".publicar",
+   "projeto": "fairco-novo",
+   "ramo_cf": "main"
+  },
+  {
+   "repo": "validaauditoria-site",
+   "ramo": "main",
+   "etapas": [
+    "sh scripts/montar_publicar.sh {dir}"
+   ],
+   "saida": ".publicar",
+   "projeto": "validaauditoria",
+   "ramo_cf": "main"
+  },
+  {
+   "repo": "innovasphere-site",
+   "ramo": "master",
+   "etapas": [
+    "bash scripts/montar_publicar.sh {dir}",
+    "bash desalojar.sh"
+   ],
+   "saida": "_publica",
+   "projeto": "siteinnovasphere",
+   "ramo_cf": "main"
+  },
+  {
+   "repo": "inncorporate-site",
+   "ramo": "main",
+   "etapas": [
+    "bash curar-publicacao.sh",
+    "bash desalojar.sh"
+   ],
+   "saida": "_publica",
+   "projeto": "inncorporate",
+   "ramo_cf": "main"
+  },
+  {
+   "repo": "incorpbuilding-site",
+   "ramo": "main",
+   "etapas": [
+    "sh scripts/montar_publicar.sh {dir}"
+   ],
+   "saida": ".publicar",
+   "projeto": "incorpbuilding",
+   "ramo_cf": "main"
+  },
+  {
+   "repo": "incorpmine-site",
+   "ramo": "main",
+   "etapas": [
+    "sh scripts/montar_publicar.sh {dir}"
+   ],
+   "saida": ".publicar",
+   "projeto": "incorpmine",
+   "ramo_cf": "main"
+  },
+  {
+   "repo": "innovapeople",
+   "ramo": "main",
+   "etapas": [
+    "bash curar-publicacao.sh",
+    "sh scripts/montar_publicar.sh .",
+    "bash desalojar.sh"
+   ],
+   "saida": "_publica",
+   "projeto": "innovapeople",
+   "ramo_cf": "main"
+  },
+  {
+   "repo": "inncorpower-site",
+   "ramo": "main",
+   "etapas": [
+    "sh scripts/montar_publicar.sh {dir}"
+   ],
+   "saida": ".publicar",
+   "projeto": "inncorpower",
+   "ramo_cf": "main"
+  },
+  {
+   "repo": "innovasphere-platform",
+   "ramo": "main",
+   "historico": true,
+   "caminhos": [
+    ".",
+    ":(exclude)supabase",
+    ":(exclude)sql",
+    ":(exclude)docs",
+    ":(exclude)decisions",
+    ":(exclude)archive",
+    ":(exclude)OUTPUTS",
+    ":(exclude)audit",
+    ":(exclude)status",
+    ":(exclude)deploy",
+    ":(exclude)integrations",
+    ":(exclude)runbooks",
+    ":(exclude).claude",
+    ":(exclude).github",
+    ":(exclude,glob)*.md",
+    ":(exclude,glob)*.sql",
+    ":(exclude,glob)*.ps1",
+    ":(exclude,glob)*.cmd",
+    ":(exclude)package.json",
+    ":(exclude)package-lock.json"
+   ],
+   "etapas": [
+    "bash scripts/montar_publicar.sh {dir}"
+   ],
+   "saida": ".publicar",
+   "projeto": "plataformainnovasphere",
+   "ramo_cf": "main"
+  },
+  {
+   "repo": "innmail-site",
+   "ramo": "main",
+   "etapas": [
+    "sh scripts/montar_publicar.sh {dir}"
+   ],
+   "saida": ".publicar",
+   "projeto": "innmail",
+   "ramo_cf": "main"
+  }
+ ]
 }
