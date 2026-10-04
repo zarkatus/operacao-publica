@@ -58,6 +58,7 @@ jobs:
         run: |
           [ -n "$NTFY_TOPICO" ] || { echo "sem NTFY_TOPICO: aviso não enviado"; exit 0; }
           OBS=$(grep -E '^(FALHOU|RESUMO|camada_)' "$RUNNER_TEMP/saida.txt" 2>/dev/null | head -15)
+          [ -n "$OBS" ] || OBS=$(tail -3 "$RUNNER_TEMP/saida.txt" 2>/dev/null)
           [ -n "$OBS" ] || OBS="sem saída: falhou antes do ensaio"
           { echo "O que quebrou: ensaio mensal da reserva do Supabase (auto-hospedado) falhou."
              echo "Valor observado:"; echo "$OBS"; echo

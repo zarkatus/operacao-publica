@@ -22,19 +22,19 @@ conf() { if [ "$2" = "$3" ]; then ok "$1 (esperado=$3 obtido=$2)"; else nok "$1 
 # Desde 04/10/2026 (T5.10 p3) a camada é gerada TODO DIA na VM do Google a partir do dump diário (repo da plataforma,
 # infra/vm-gcp-diversificacao/opt-camada-ensaio); o usuário pullcamada só consegue ler esse arquivo cifrado.
 # Host e chave de host vêm do segredo CAMADA_SSH_KH (linha de known_hosts): nenhum endereço no código público.
-[ -n "${ENSAIO_SCHEMA_KEY:-}" ] || { echo "sem ENSAIO_SCHEMA_KEY"; exit 1; }
-[ -n "${CAMADA_SSH_KEY:-}" ] && [ -n "${CAMADA_SSH_KH:-}" ] || { echo "sem CAMADA_SSH_KEY/CAMADA_SSH_KH"; exit 1; }
+[ -n "${ENSAIO_SCHEMA_KEY:-}" ] || { echo "FALHOU sem ENSAIO_SCHEMA_KEY"; exit 1; }
+[ -n "${CAMADA_SSH_KEY:-}" ] && [ -n "${CAMADA_SSH_KH:-}" ] || { echo "FALHOU sem CAMADA_SSH_KEY/CAMADA_SSH_KH"; exit 1; }
 printf '%s' "$ENSAIO_SCHEMA_KEY" > "$R/k"; chmod 600 "$R/k"; unset ENSAIO_SCHEMA_KEY
 printf '%s\n' "$CAMADA_SSH_KEY" > "$R/ks"; chmod 600 "$R/ks"; printf '%s\n' "$CAMADA_SSH_KH" > "$R/kh"; unset CAMADA_SSH_KEY
 VM_CAMADA="${CAMADA_SSH_KH%% *}"; unset CAMADA_SSH_KH
 timeout 120 ssh -i "$R/ks" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$R/kh" \
   -o ConnectTimeout=20 "pullcamada@$VM_CAMADA" > "$R/camada.enc" 2>/dev/null; RC_BAIXAR=$?
 rm -f "$R/ks"; unset VM_CAMADA
-[ "$RC_BAIXAR" -eq 0 ] && [ -s "$R/camada.enc" ] || { echo "baixar a camada da VM falhou (rc=$RC_BAIXAR)"; exit 1; }
+[ "$RC_BAIXAR" -eq 0 ] && [ -s "$R/camada.enc" ] || { echo "FALHOU baixar a camada da VM falhou (rc=$RC_BAIXAR)"; exit 1; }
 openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass "file:$R/k" -in "$R/camada.enc" | gunzip > "$R/camada.sql" \
-  || { echo "decifrar falhou"; exit 1; }
+  || { echo "FALHOU decifrar falhou"; exit 1; }
 GERADA=$(head -1 "$R/camada.sql" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}Z')
-[ -n "$GERADA" ] || { echo "camada sem carimbo de geração na 1a linha"; exit 1; }
+[ -n "$GERADA" ] || { echo "FALHOU camada sem carimbo de geração na 1a linha"; exit 1; }
 CAMADA_IDADE_H=$(( ( $(date +%s) - $(date -d "$GERADA" +%s) ) / 3600 ))
 echo "camada_bytes=$(stat -c %s "$R/camada.sql") camada_idade_h=$CAMADA_IDADE_H"
 [ "$CAMADA_IDADE_H" -le 50 ] && ok "camada fresca (${CAMADA_IDADE_H} h, limite 50 h)" \
