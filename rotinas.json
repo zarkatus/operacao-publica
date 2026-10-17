@@ -317,6 +317,7 @@
       "profundidade": 50,
       "comandos": [
         "pip install -q google-api-python-client google-auth",
+        "[ -z \"$ENSAIO\" ] || python -c \"import google.auth, google.auth.transport.requests as r; c,_=google.auth.default(scopes=['https://www.googleapis.com/auth/webmasters.readonly']); c.refresh(r.Request()); print('google ok')\"",
         "if [ -n \"$ENSAIO\" ]; then SUPABASE_SERVICE_ROLE_KEY= python scripts/acompanhamento.py; else python scripts/acompanhamento.py; fi",
         "[ -n \"$ENSAIO\" ] || { git add relatorios/ && if git diff --cached --quiet; then echo \"sem mudança\"; else N=$(git diff --cached --name-only | wc -l); git -c user.name=\"agente-innconta\" -c user.email=\"agente@innconta.com.br\" commit -q -m \"acompanhamento semanal: relatório $(date -u +%Y-%m-%d)\" && git pull --rebase --autostash -q origin main && git push -q; fi; }"
       ],
