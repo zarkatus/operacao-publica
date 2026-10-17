@@ -1,0 +1,46 @@
+# Rotina ic-acompanhamento-semanal: código no repo privado; roda AQUI (repo público, Actions grátis) via scripts/rodar_rotina.py.
+# Migrada em 17/10/2026 de innconta-site/.github/workflows/acompanhamento-semanal.yml (Actions privado parado por cobrança; CVO 17/10: custo zero, sem regularizar).
+# Comita de volta no repo privado: usa DEPLOY_KEYS_ESCRITA (só os workflows das rotinas com "escrita": true).
+# Disparo: agendador em corrente (rotinas.json). Log mudo; falha vai à central técnica (ntfy).
+name: Acompanhamento semanal (InnConta)
+run-name: "Acompanhamento semanal (InnConta)${{ inputs.ensaio == 'true' && ' (ensaio)' || '' }}"
+on:
+  workflow_dispatch:
+    inputs:
+      ensaio:
+        description: 'true = sem chave de serviço (não enfileira o WhatsApp) e não comita'
+        required: false
+        default: 'false'
+permissions:
+  contents: read
+  id-token: write   # federação com o Google (Search Console)
+concurrency:
+  group: ic-acompanhamento-semanal
+  cancel-in-progress: false
+jobs:
+  rodar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Google sem chave (federação; se o provedor recusar este repo, o relatório marca o Search Console como pendente)
+        continue-on-error: true
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: innconta-ops
+          workload_identity_provider: projects/956191049393/locations/global/workloadIdentityPools/github/providers/github-innconta
+          service_account: agente-innconta@innconta-ops.iam.gserviceaccount.com
+      - name: Rodar a rotina (log mudo; falha vai à central técnica)
+        env:
+          DEPLOY_KEYS_ESCRITA: ${{ secrets.DEPLOY_KEYS_ESCRITA }}
+          NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ENSAIO: ${{ inputs.ensaio == 'true' && '1' || '' }}
+        run: python3 scripts/rodar_rotina.py ic-acompanhamento-semanal

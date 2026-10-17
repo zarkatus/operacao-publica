@@ -1,0 +1,39 @@
+# Rotina ic-cnpj-recorte: código no repo privado; roda AQUI (repo público, Actions grátis) via scripts/rodar_rotina.py.
+# Migrada em 17/10/2026 de innconta-site/.github/workflows/cnpj-recorte.yml (Actions privado parado por cobrança; CVO 17/10: custo zero, sem regularizar).
+# Comita de volta no repo privado: usa DEPLOY_KEYS_ESCRITA (só os workflows das rotinas com "escrita": true).
+# Disparo: agendador em corrente (rotinas.json). Log mudo; falha vai à central técnica (ntfy).
+name: CNPJ · recorte por frente
+run-name: "CNPJ · recorte por frente${{ inputs.ensaio == 'true' && ' (ensaio)' || '' }}"
+on:
+  workflow_dispatch:
+    inputs:
+      ensaio:
+        description: 'true = --amostra (arquivo 1, não grava nem alimenta o radar)'
+        required: false
+        default: 'false'
+permissions:
+  contents: read
+concurrency:
+  group: ic-cnpj-recorte
+  cancel-in-progress: false
+jobs:
+  rodar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Rodar a rotina (log mudo; falha vai à central técnica)
+        env:
+          DEPLOY_KEYS_ESCRITA: ${{ secrets.DEPLOY_KEYS_ESCRITA }}
+          NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
+          SB_URL: ${{ secrets.SUPABASE_URL }}
+          SB_SERVICE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CNPJ_MODO: ${{ inputs.ensaio == 'true' && '--amostra' || '--se-novo' }}
+          RECORTE_UFS: "SC,PR,RS,SP"
+        run: python3 scripts/rodar_rotina.py ic-cnpj-recorte

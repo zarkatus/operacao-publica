@@ -222,6 +222,112 @@
       ],
       "hc_segredo": "HC_PING_RADAR_CONTATO_SITE",
       "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/radar-contato-site.yml (Actions privado bloqueado por cobrança)"
+    },
+    "plat-snapshot-funcoes": {
+      "repo": "innovasphere-platform",
+      "ramo": "main",
+      "escrita": true,
+      "workflow": "plat-snapshot-funcoes.yml",
+      "timeout_s": 1500,
+      "profundidade": 50,
+      "comandos": [
+        "node scripts/snapshot-funcoes.mjs dqknyhfrrmbqvkdshjfu supabase/_estado-vivo/funcoes",
+        "git add -A supabase/_estado-vivo/funcoes && if git diff --cached --quiet; then echo \"sem mudança\"; else N=$(git diff --cached --name-only | wc -l); git -c user.name=\"retrato-funcoes[bot]\" -c user.email=\"central@innconta.com.br\" commit -q -m \"[skip ci] chore(estado-vivo): retrato das funções — ${N} arquivo(s) mudaram\" && git pull --rebase -q origin main && git push -q; fi",
+        "N=$(sed -n \"s/^com_segredo=//p\" \"$GITHUB_OUTPUT\" 2>/dev/null | tail -1); L=$(sed -n \"s/^lista_segredo=//p\" \"$GITHUB_OUTPUT\" 2>/dev/null | tail -1); if [ -n \"$N\" ] && [ \"$N\" != \"0\" ] && [ -n \"$RESEND_API_KEY\" ]; then curl -sf -X POST https://api.resend.com/emails -H \"Authorization: Bearer $RESEND_API_KEY\" -H \"Content-Type: application/json\" -d \"$(jq -n --arg n \"$N\" --arg l \"$L\" '{from:\"noreply@innovasphere.ia.br\",to:[\"central@innconta.com.br\"],subject:(\"[ALERTA] \"+$n+\" função(ões) da plataforma com segredo literal no corpo\"),text:(\"O que quebrou: segredo chumbado no corpo de função (deveria ler do vault).\nValor observado: \"+$n+\" função(ões): \"+$l+\"\nAção: mover o valor para o cofre + vault e trocar o literal. O retrato já gravou mascarado.\")}')\" >/dev/null; fi"
+      ],
+      "horarios_utc": [
+        "06:30"
+      ],
+      "dias_semana": [
+        0
+      ],
+      "inicio": "2026-10-19",
+      "_origem": "migrada 17/10/2026 de innovasphere-platform/.github/workflows/snapshot-funcoes.yml (Actions privado bloqueado por cobrança; CVO 17/10: custo zero, sem regularizar). Comita de volta: deploy key de ESCRITA (DEPLOY_KEYS_ESCRITA)"
+    },
+    "ic-snapshot-funcoes": {
+      "repo": "innconta-site",
+      "ramo": "main",
+      "escrita": true,
+      "workflow": "ic-snapshot-funcoes.yml",
+      "timeout_s": 1500,
+      "profundidade": 50,
+      "comandos": [
+        "node scripts/snapshot-funcoes.mjs gprkopmqhocsslrdmebm supabase/_estado-vivo/funcoes",
+        "git add -A supabase/_estado-vivo/funcoes && if git diff --cached --quiet; then echo \"sem mudança\"; else N=$(git diff --cached --name-only | wc -l); git -c user.name=\"retrato-funcoes[bot]\" -c user.email=\"central@innconta.com.br\" commit -q -m \"[skip ci] chore(estado-vivo): retrato das funções — ${N} arquivo(s) mudaram\" && git pull --rebase -q origin main && git push -q; fi",
+        "N=$(sed -n \"s/^com_segredo=//p\" \"$GITHUB_OUTPUT\" 2>/dev/null | tail -1); L=$(sed -n \"s/^lista_segredo=//p\" \"$GITHUB_OUTPUT\" 2>/dev/null | tail -1); if [ -n \"$N\" ] && [ \"$N\" != \"0\" ] && [ -n \"$SB_SERVICE\" ]; then curl -sf -X POST \"$SB_URL/rest/v1/rpc/ic_email\" -H \"apikey: $SB_SERVICE\" -H \"Authorization: Bearer $SB_SERVICE\" -H \"Content-Type: application/json\" -d \"$(jq -n --arg n \"$N\" --arg l \"$L\" '{p_para:\"central@innconta.com.br\",p_assunto:(\"[ALERTA] \"+$n+\" função(ões) do InnConta com segredo literal no corpo\"),p_html:(\"<p><b>O que quebrou:</b> segredo chumbado no corpo de função (deveria ler por public.ic_segredo_valor / vault).</p><p><b>Valor observado:</b> \"+$n+\" função(ões): \"+$l+\"</p><p><b>Ação:</b> mover o valor para o vault e trocar o literal. O retrato já gravou mascarado.</p>\")}')\" >/dev/null; fi"
+      ],
+      "horarios_utc": [
+        "06:40"
+      ],
+      "dias_semana": [
+        0
+      ],
+      "inicio": "2026-10-19",
+      "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/snapshot-funcoes.yml (Actions privado bloqueado por cobrança; CVO 17/10: custo zero, sem regularizar). Comita de volta: deploy key de ESCRITA (DEPLOY_KEYS_ESCRITA)"
+    },
+    "ic-pgfn": {
+      "repo": "innconta-site",
+      "ramo": "main",
+      "escrita": true,
+      "workflow": "ic-pgfn.yml",
+      "timeout_s": 5400,
+      "profundidade": 50,
+      "hc_segredo": "HC_PING_PGFN_MENSAL",
+      "comandos": [
+        "python .github/scripts/pgfn_carga.py $PGFN_MODO",
+        "[ \"$PGFN_MODO\" = \"--so-ler\" ] || grep -qx \"nada_novo=true\" \"$GITHUB_OUTPUT\" 2>/dev/null || { git add dados/pgfn-radar-*.json && if git diff --cached --quiet; then echo \"sem mudança\"; else N=$(git diff --cached --name-only | wc -l); git -c user.name=\"consultor-de-bases\" -c user.email=\"contato@innconta.com.br\" commit -q -m \"PGFN: recorte do radar por UF ($(date -u +%Y-%m-%d))\" && git pull --rebase -q origin main && git push -q; fi; }"
+      ],
+      "horarios_utc": [
+        "09:00"
+      ],
+      "dias_mes": [
+        3
+      ],
+      "inicio": "2026-11-03",
+      "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/pgfn.yml (Actions privado bloqueado por cobrança; CVO 17/10: custo zero, sem regularizar). Comita de volta: deploy key de ESCRITA (DEPLOY_KEYS_ESCRITA); a publicação no Pages agora é do publicar-sites (innconta-site em sites.json)"
+    },
+    "ic-cnpj-recorte": {
+      "repo": "innconta-site",
+      "ramo": "main",
+      "escrita": true,
+      "workflow": "ic-cnpj-recorte.yml",
+      "timeout_s": 19800,
+      "profundidade": 50,
+      "comandos": [
+        "python .github/scripts/cnpj_recorte.py $CNPJ_MODO",
+        "[ \"$CNPJ_MODO\" = \"--amostra\" ] || grep -qx \"nada_novo=true\" \"$GITHUB_OUTPUT\" 2>/dev/null || { git add recortes/cnpj-meta.json recortes/cnpj-executores.json.gz recortes/cnpj-clientes.json.gz && if git diff --cached --quiet; then echo \"sem mudança\"; else N=$(git diff --cached --name-only | wc -l); git -c user.name=\"consultor-de-bases\" -c user.email=\"contato@innconta.com.br\" commit -q -m \"CNPJ: recorte por frente ($(date -u +%Y-%m-%d))\" && git pull --rebase -q origin main && git push -q; fi; }",
+        "[ \"$CNPJ_MODO\" = \"--amostra\" ] || grep -qx \"nada_novo=true\" \"$GITHUB_OUTPUT\" 2>/dev/null || python .github/scripts/radar_parceiros.py",
+        "[ \"$CNPJ_MODO\" = \"--amostra\" ] || grep -qx \"nada_novo=true\" \"$GITHUB_OUTPUT\" 2>/dev/null || python .github/scripts/radar_frentes.py"
+      ],
+      "horarios_utc": [
+        "09:00"
+      ],
+      "dias_mes": [
+        5
+      ],
+      "inicio": "2026-11-05",
+      "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/cnpj-recorte.yml (Actions privado bloqueado por cobrança; CVO 17/10: custo zero, sem regularizar). Comita de volta: deploy key de ESCRITA (DEPLOY_KEYS_ESCRITA)"
+    },
+    "ic-acompanhamento-semanal": {
+      "repo": "innconta-site",
+      "ramo": "main",
+      "escrita": true,
+      "workflow": "ic-acompanhamento-semanal.yml",
+      "timeout_s": 1500,
+      "profundidade": 50,
+      "comandos": [
+        "pip install -q google-api-python-client google-auth",
+        "if [ -n \"$ENSAIO\" ]; then SUPABASE_SERVICE_ROLE_KEY= python scripts/acompanhamento.py; else python scripts/acompanhamento.py; fi",
+        "[ -n \"$ENSAIO\" ] || { git add relatorios/ && if git diff --cached --quiet; then echo \"sem mudança\"; else N=$(git diff --cached --name-only | wc -l); git -c user.name=\"agente-innconta\" -c user.email=\"agente@innconta.com.br\" commit -q -m \"acompanhamento semanal: relatório $(date -u +%Y-%m-%d)\" && git pull --rebase -q origin main && git push -q; fi; }"
+      ],
+      "horarios_utc": [
+        "11:30"
+      ],
+      "dias_semana": [
+        0
+      ],
+      "inicio": "2026-10-19",
+      "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/acompanhamento-semanal.yml (Actions privado bloqueado por cobrança; CVO 17/10: custo zero, sem regularizar). Comita de volta: deploy key de ESCRITA (DEPLOY_KEYS_ESCRITA); Google por federação (WIF) no workflow, tolerante a falha; BING_API_KEY não está no cofre (só no secret do privado), sem ela o relatório marca Bing como pendente"
     }
   }
 }

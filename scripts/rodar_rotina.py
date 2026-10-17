@@ -25,6 +25,12 @@ try:
     CHAVES = json.loads(os.environ.pop("DEPLOY_KEYS", "") or "{}")
 except ValueError:
     CHAVES = {}
+# "escrita": true = rotina que comita de volta no repo (retrato, recorte, relatório): usa a deploy key de ESCRITA
+# daquele repo (DEPLOY_KEYS_ESCRITA, só nos workflows dessas rotinas) e o git dos comandos herda o ssh dela.
+try:
+    CHAVES_ESCRITA = json.loads(os.environ.pop("DEPLOY_KEYS_ESCRITA", "") or "{}")
+except ValueError:
+    CHAVES_ESCRITA = {}
 NTFY = os.environ.pop("NTFY_TOPICO", "")
 HC = os.environ.pop(ROT.get("hc_segredo", "HC_PING_ROTINA"), "") if ROT else ""
 
@@ -57,10 +63,12 @@ def main():
            f"/actions/runs/{os.environ.get('GITHUB_RUN_ID', '')}")
     with tempfile.TemporaryDirectory() as tmp:
         log = pathlib.Path(tmp) / "saida.log"
-        k = CHAVES.get(ROT["repo"])
+        escrita = bool(ROT.get("escrita"))
+        nome_seg = "DEPLOY_KEYS_ESCRITA" if escrita else "DEPLOY_KEYS"
+        k = (CHAVES_ESCRITA if escrita else CHAVES).get(ROT["repo"])
         if not k:
-            print("FALHOU: deploy key ausente em DEPLOY_KEYS")
-            avisar(f"Rotina {NOME}: deploy key de {ROT['repo']} ausente em DEPLOY_KEYS.\nRun: {run}")
+            print(f"FALHOU: deploy key ausente em {nome_seg}")
+            avisar(f"Rotina {NOME}: deploy key de {ROT['repo']} ausente em {nome_seg}.\nRun: {run}")
             ping(True)
             return 1
         kp = pathlib.Path(tmp) / "k"
@@ -79,8 +87,10 @@ def main():
             avisar(f"Rotina {NOME}: clone de {ROT['repo']} falhou (rc={rc}).\nRun: {run}\n\n" + cauda(log))
             ping(True)
             return 1
-        env.pop("GIT_SSH_COMMAND", None)
+        if not escrita:
+            env.pop("GIT_SSH_COMMAND", None)
         env["GITHUB_WORKSPACE"] = str(d)
+        env["GITHUB_OUTPUT"] = str(pathlib.Path(tmp) / "saidas")  # "nome=valor" do script, lido pelos comandos seguintes
         for i, cmd in enumerate(ROT["comandos"], 1):
             with open(log, "a", encoding="utf-8") as f:
                 f.write(f"\n$ comando {i}\n")

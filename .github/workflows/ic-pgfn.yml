@@ -1,0 +1,40 @@
+# Rotina ic-pgfn: código no repo privado; roda AQUI (repo público, Actions grátis) via scripts/rodar_rotina.py.
+# Migrada em 17/10/2026 de innconta-site/.github/workflows/pgfn.yml (Actions privado parado por cobrança; CVO 17/10: custo zero, sem regularizar).
+# Comita de volta no repo privado: usa DEPLOY_KEYS_ESCRITA (só os workflows das rotinas com "escrita": true).
+# Disparo: agendador em corrente (rotinas.json). Log mudo; falha vai à central técnica (ntfy).
+name: PGFN · dívida ativa
+run-name: "PGFN · dívida ativa${{ inputs.ensaio == 'true' && ' (ensaio)' || '' }}"
+on:
+  workflow_dispatch:
+    inputs:
+      ensaio:
+        description: 'true = --so-ler (só lê e conta, não grava)'
+        required: false
+        default: 'false'
+permissions:
+  contents: read
+concurrency:
+  group: ic-pgfn
+  cancel-in-progress: false
+jobs:
+  rodar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Rodar a rotina (log mudo; falha vai à central técnica)
+        env:
+          DEPLOY_KEYS_ESCRITA: ${{ secrets.DEPLOY_KEYS_ESCRITA }}
+          NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
+          HC_PING_PGFN_MENSAL: ${{ secrets.HC_PING_PGFN_MENSAL }}
+          PGFN_MODO: ${{ inputs.ensaio == 'true' && '--so-ler' || '--radar --se-novo' }}
+          RADAR_UFS: "SC,PR,RS,SP,BA,MA,TO,PI"
+          RADAR_MIN_REAIS: "100000"
+          RADAR_MAX_REAIS: "10000000"
+        run: python3 scripts/rodar_rotina.py ic-pgfn
