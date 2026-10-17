@@ -11,7 +11,7 @@ A franquia de repo privado (2.000 min/mês, orçamento US$ 0 com Stop usage) esg
 ## O que roda aqui
 | workflow | o que faz | frequência |
 |---|---|---|
-| `publicar-sites.yml` | publica cada site de `sites.json` no Cloudflare Pages quando o ramo do repo privado tem commit novo; no fim, o agendador em corrente (`scripts/agendar.py`) dispara as rotinas do dia e o próximo ciclo | ~5 min (corrente) + manual |
+| `publicar-sites.yml` | publica cada site de `sites.json` no Cloudflare Pages (e, na entrada `tipo: supabase-funcoes`, as Edge Functions da plataforma) quando o ramo do repo privado tem commit novo; no fim, o agendador em corrente (`scripts/agendar.py`) dispara as rotinas do dia e o próximo ciclo | ~5 min (corrente) + manual |
 | `vigia-rodape.yml` | vigia do rodapé dos sites (código em `innconta-site/scripts/vigia_rodape`) via `scripts/rodar_rotina.py` | 11:30 UTC (corrente) + 14:30 `--rede` (cron do GitHub, só rede) |
 | `ensaio-supabase.yml` | ensaio da reserva do Supabase (S3b/T5.9): self-host oficial + camada da plataforma cifrada (sem dado) + 99 EFs reais, só dado sintético; ~2 min | mensal pelo agendador (`intervalo_dias: 30`) + manual |
 | `plat-*.yml`, `ic-*.yml` (11) | rotinas de `innovasphere-platform` (digest, audit, ia-worker, vigia-endpoints, comunicado, RDO, SINAPI) e `innconta-site` (sanções rápidas e lentas, 2 radares) via `scripts/rodar_rotina.py`; migradas em 17/10/2026 | agendador (`rotinas.json`: horário + `dias_semana`/`dias_mes`) + manual (`-f ensaio=true` = modo ensaio do script) |
@@ -55,3 +55,10 @@ A franquia de repo privado (2.000 min/mês, orçamento US$ 0 com Stop usage) esg
 - **Ensaio por rotina:** digest `--dry-run`, comunicado/RDO `NO_SEND=1` (comunicado também não zera a aprovação), radares `--so-ler`; as demais rodam de verdade (leitura ou carga idempotente).
 - **Privado desligado** (`gh workflow disable`) depois do ensaio verde, para não rodar em dobro quando a cobrança voltar; religar = `gh workflow enable` lá e remover a entrada aqui.
 - Fora daqui por escrever de volta no repo (deploy key só leitura): `snapshot-funcoes` (2 repos), `pgfn`, `cnpj-recorte`, `acompanhamento-semanal`.
+
+## Deploys por push dos privados (17/10/2026, fio actions-redundancia)
+- **Regra (CVO 17/10):** "não vou regularizar, é custo zero e pronto". Nenhum deploy depende do Actions privado; tudo que publicava por `push` lá entrou em `sites.json`: `innconta-site` (reserva do hook pre-push local), `innc-site`, `crm-picarras-hills`, `app-picarrashills`, `fazendapremium-site`, `estanciaferrari-site`, `pwa-clientes-picarrashills`, `carteira-inncorporate`, e, por `id`, `ces-reuniao`, `plat-cliente-portal`, `plat-portal-fiscalizacao`, `plat-edge-functions`.
+- **`id`**: o estado (`estado/falhas.json`) e o filtro `SITE=` usam `id` (ou `repo`); entrada extra de um repo que já publica outro projeto precisa de `id`, senão uma pisa no estado da outra.
+- **Projeto que é subpasta do repo** (`reuniao/`, `cliente-portal/`): `historico: true` + `caminhos` com a pasta, senão todo commit do repo republica o projeto.
+- **Edge Functions (`tipo: supabase-funcoes`)**: o Supabase não guarda commit; o último publicado vive no cache (`_funcoes`), e sem cache vale `base_sha`. Publica só as funções tocadas pelo diff (`CHANGED_FILES`) com o `scripts/ci-deploy-functions.mjs` do próprio repo, que já trata `_shared`, `verify_jwt` e 429. O PAT entra só no publicador (`PLAT_SUPABASE_MANAGEMENT_PAT`) e é passado ao script desta entrada, nunca às etapas de curadoria. `forcar=true` nesta entrada = TODAS as funções.
+- `crm-redirect` da plataforma **não** migrou: parado desde 05/2026 e publicaria no mesmo projeto `crm-picarras-hills` que o repo do CRM.

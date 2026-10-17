@@ -1,4 +1,4 @@
-# Publica os sites do grupo a partir dos repositórios privados, rodando AQUI (repo público: Actions grátis e
+# Publica os sites (e as Edge Functions da plataforma) do grupo a partir dos repositórios privados, rodando AQUI (repo público: Actions grátis e
 # ilimitado; CVO 03/10/2026). Lógica e regras: scripts/publicar.py e PLAYBOOK.md. Site novo: sites.json + deploy key.
 name: Publicar sites
 run-name: "Publicar sites${{ github.event.inputs.site && format(' · {0}', github.event.inputs.site) || '' }}"
@@ -40,6 +40,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           DEPLOY_KEYS: ${{ secrets.DEPLOY_KEYS }}
+          PLAT_SUPABASE_MANAGEMENT_PAT: ${{ secrets.PLAT_SUPABASE_MANAGEMENT_PAT }}   # só a entrada tipo supabase-funcoes (sites.json)
           NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
           HC_PING_PUBLICAR_SITES: ${{ secrets.HC_PING_PUBLICAR_SITES }}
           SITE: ${{ github.event.inputs.site }}

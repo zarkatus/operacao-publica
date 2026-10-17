@@ -27,7 +27,8 @@ import urllib.request
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 SITES = json.loads((RAIZ / "sites.json").read_text(encoding="utf-8"))["sites"]
-_NOMES = ("CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "NTFY_TOPICO", "HC_PING_PUBLICAR_SITES")
+_NOMES = ("CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "NTFY_TOPICO", "HC_PING_PUBLICAR_SITES",
+          "PLAT_SUPABASE_MANAGEMENT_PAT")
 SEG = {n: os.environ.pop(n, "") for n in _NOMES}  # sai do ambiente: etapas do repo privado nunca herdam
 try:
     CHAVES = json.loads(os.environ.pop("DEPLOY_KEYS", "") or "{}")  # {"<repo>": "<chave privada só leitura>"}
@@ -105,6 +106,41 @@ def sem_mudanca_de_app(site, d, pub, got):
     return r.returncode == 0 and not r.stdout.strip()
 
 
+def chave(site):
+    """Identidade da entrada (estado, filtro SITE): "id" quando o mesmo repo publica mais de um projeto."""
+    return site.get("id") or site["repo"]
+
+
+def publicar_funcoes(site, env, tmp, pub=None):
+    """tipo "supabase-funcoes": publica só as Edge Functions tocadas desde o último commit publicado (estado no
+    cache, estado/falhas.json → _funcoes; sem cache vale site["base_sha"]), pelo script do próprio repo
+    (site["script"]). Sem nenhum dos dois = todas."""
+    d = pathlib.Path(tmp) / "r"
+    log = pathlib.Path(tmp) / "saida.log"
+    url = f"git@github.com:zarkatus/{site['repo']}.git"
+    if rodar(["git", "clone", "-q", "--filter=blob:none", "--branch", site.get("ramo", "main"), url, str(d)],
+             tmp, env, log, timeout=600):
+        raise Falha("clone falhou", cauda(log))
+    got = subprocess.run(["git", "rev-parse", "HEAD"], cwd=d, capture_output=True, text=True).stdout.strip()
+    pat = SEG.get(site.get("segredo_pat", "PLAT_SUPABASE_MANAGEMENT_PAT"))
+    if not pat:
+        raise Falha("PAT do Supabase ausente no ambiente do publicador")
+    e = dict(env, SUPABASE_MANAGEMENT_PAT=pat, PROJECT_ID=site["projeto_supabase"])
+    e.pop("CHANGED_FILES", None)
+    if pub and not FORCAR and not subprocess.run(["git", "cat-file", "-e", f"{pub}^{{commit}}"], cwd=d,
+                                                  capture_output=True).returncode:
+        r = subprocess.run(["git", "diff", "--name-only", pub, got, "--", *site["caminhos"]], cwd=d,
+                           capture_output=True, text=True)
+        if r.returncode == 0 and not r.stdout.strip():
+            return got, None
+        e["CHANGED_FILES"] = r.stdout
+    rc = rodar(site["script"], d, e, log, timeout=1800, shell=True)
+    if rc:
+        raise Falha(f"deploy de funções rc={rc}", cauda(log))
+    n = len([x for x in (e.get("CHANGED_FILES") or "").splitlines() if x.strip()]) or "todas as"
+    return got, n
+
+
 def publicar(site, sha, env, tmp, pub=None):
     d = pathlib.Path(tmp) / "r"
     log = pathlib.Path(tmp) / "saida.log"
@@ -117,7 +153,7 @@ def publicar(site, sha, env, tmp, pub=None):
     if sem_mudanca_de_app(site, d, pub, got):
         return got, None
     env_etapa = dict(env, GITHUB_WORKSPACE=str(d))  # script que lê a variável em vez do argumento acha o clone
-    for i, etapa in enumerate(site["etapas"], 1):
+    for i, etapa in enumerate(site.get("etapas") or [], 1):
         if rodar(etapa.replace("{dir}", str(d)), d, env_etapa, log, shell=True):
             raise Falha(f"etapa {i} de curadoria reprovou", cauda(log))
     saida = d / site["saida"]
@@ -160,7 +196,7 @@ def main():
     if not (CF_TOKEN and CF_CONTA):
         print("ERRO: segredos do Cloudflare ausentes")
         return 2
-    alvo = [s for s in SITES if not ALVO or s["repo"] == ALVO]
+    alvo = [s for s in SITES if not ALVO or ALVO in (s["repo"], chave(s))]
     if ALVO and not alvo:
         print(f"ERRO: site '{ALVO}' não está em sites.json")
         return 2
@@ -174,41 +210,46 @@ def main():
     falhas, pendentes = [], []
     for s in alvo:
         rem = None
+        k = chave(s)
+        funcoes = s.get("tipo") == "supabase-funcoes"
         with tempfile.TemporaryDirectory() as tmp:
             try:
                 env = env_ssh(s["repo"], tmp)
                 rem = sha_remoto(s, env)
-                pub = sha_publicado(s)
+                pub = (estado.setdefault("_funcoes", {}).get(k) or s.get("base_sha")) if funcoes else sha_publicado(s)
                 if rem == pub and not FORCAR:
-                    print(f"{s['repo']}: em dia ({rem[:7]})")
-                    estado.pop(s["repo"], None)
+                    print(f"{k}: em dia ({rem[:7]})")
+                    estado.pop(k, None)
                     continue
                 conferidos = estado.setdefault("_sem_app", {})
-                if conferidos.get(s["repo"]) == rem and not FORCAR:
-                    print(f"{s['repo']}: em dia ({rem[:7]} sem mudança de app desde {str(pub)[:7]})")
+                if conferidos.get(k) == rem and not FORCAR:
+                    print(f"{k}: em dia ({rem[:7]} sem mudança de app desde {str(pub)[:7]})")
                     continue
-                if rem and (estado.get(s["repo"]) or [None])[0] == rem and not FORCAR:
-                    print(f"{s['repo']}: {rem[:7]} reprovou antes; aguarda commit novo (central já avisada)")
-                    pendentes.append(s["repo"])
+                if rem and (estado.get(k) or [None])[0] == rem and not FORCAR:
+                    print(f"{k}: {rem[:7]} reprovou antes; aguarda commit novo (central já avisada)")
+                    pendentes.append(k)
                     continue
-                got, n = publicar(s, rem, env, tmp, pub)
-                estado.pop(s["repo"], None)
+                got, n = (publicar_funcoes if funcoes else publicar)(*((s, env, tmp, pub) if funcoes
+                                                                       else (s, rem, env, tmp, pub)))
+                if funcoes:
+                    estado["_funcoes"][k] = got
+                estado.pop(k, None)
                 if n is None:
-                    conferidos[s["repo"]] = got
-                    print(f"{s['repo']}: em dia ({got[:7]} sem mudança de app desde {str(pub)[:7]})")
+                    conferidos[k] = got
+                    print(f"{k}: em dia ({got[:7]} sem mudança de app desde {str(pub)[:7]})")
                     continue
-                conferidos.pop(s["repo"], None)
-                print(f"{s['repo']}: publicado {got[:7]} ({n} arquivos; antes {str(pub)[:7]})")
+                conferidos.pop(k, None)
+                print(f"{k}: publicado {got[:7]} ({n} arquivos; antes {str(pub)[:7]})")
             except Exception as ex:
                 curto = ex.curto if isinstance(ex, Falha) else type(ex).__name__
                 detalhe = ex.detalhe if isinstance(ex, Falha) else str(ex)
-                if estado.get(s["repo"]) == [rem, curto]:
-                    print(f"{s['repo']}: FALHOU de novo, {curto} (central já avisada)")
-                    pendentes.append(s["repo"])
+                if estado.get(k) == [rem, curto]:
+                    print(f"{k}: FALHOU de novo, {curto} (central já avisada)")
+                    pendentes.append(k)
                 else:
-                    print(f"{s['repo']}: FALHOU, {curto} (detalhe na central técnica)")
-                    falhas.append(f"{s['repo']}: {curto}\n{detalhe}")
-                estado[s["repo"]] = [rem, curto]
+                    print(f"{k}: FALHOU, {curto} (detalhe na central técnica)")
+                    falhas.append(f"{k}: {curto}\n{detalhe}")
+                estado[k] = [rem, curto]
     arq_estado.parent.mkdir(exist_ok=True)
     arq_estado.write_text(json.dumps(estado), encoding="utf-8")
     if falhas:
