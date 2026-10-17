@@ -1,0 +1,38 @@
+# Rotina plat-daily-audit: código em zarkatus/innovasphere-platform; roda AQUI (repo público, Actions grátis) via scripts/rodar_rotina.py.
+# Migrada em 17/10/2026 de innovasphere-platform/.github/workflows/daily-audit.yml (divergência avisa pelo ntfy da central, sem issue).
+# Disparo: agendador em corrente (rotinas.json). Log mudo; falha vai à central técnica (ntfy).
+name: Daily Audit Anexo III-A
+run-name: "Daily Audit Anexo III-A${{ inputs.ensaio == 'true' && ' (ensaio)' || '' }}"
+on:
+  workflow_dispatch:
+    inputs:
+      ensaio:
+        description: 'true = modo ensaio do script (não envia / só lê)'
+        required: false
+        default: 'false'
+permissions:
+  contents: read
+concurrency:
+  group: plat-daily-audit
+  cancel-in-progress: false
+jobs:
+  rodar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Rodar a rotina (log mudo; falha vai à central técnica)
+        env:
+          DEPLOY_KEYS: ${{ secrets.DEPLOY_KEYS }}
+          NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
+          SUPABASE_URL: ${{ secrets.PLAT_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PLAT_SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_MANAGEMENT_PAT: ${{ secrets.PLAT_SUPABASE_MANAGEMENT_PAT }}
+          RESEND_API_KEY: ${{ secrets.PLAT_RESEND_API_KEY }}
+        run: python3 scripts/rodar_rotina.py plat-daily-audit

@@ -72,7 +72,7 @@ def main():
         d = pathlib.Path(tmp) / "r"
         url = f"git@github.com:zarkatus/{ROT['repo']}.git"
         with open(log, "a", encoding="utf-8") as f:
-            rc = subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", ROT.get("ramo", "main"), url,
+            rc = subprocess.run(["git", "clone", "-q", "--depth", str(ROT.get("profundidade", 1)), "--branch", ROT.get("ramo", "main"), url,
                                  str(d)], env=env, stdout=f, stderr=subprocess.STDOUT, timeout=300).returncode
         if rc:
             print(f"FALHOU: clone rc={rc}")

@@ -1,0 +1,36 @@
+# Rotina ic-sancoes: código em zarkatus/innconta-site; roda AQUI (repo público, Actions grátis) via scripts/rodar_rotina.py.
+# Migrada em 17/10/2026 de innconta-site/.github/workflows/sancoes.yml (jobs carregar, listas-por-nome, fontes-abertas).
+# Disparo: agendador em corrente (rotinas.json). Log mudo; falha vai à central técnica (ntfy).
+name: Sanções CGU e listas
+run-name: "Sanções CGU e listas${{ inputs.ensaio == 'true' && ' (ensaio)' || '' }}"
+on:
+  workflow_dispatch:
+    inputs:
+      ensaio:
+        description: 'true = modo ensaio do script (não envia / só lê)'
+        required: false
+        default: 'false'
+permissions:
+  contents: read
+concurrency:
+  group: ic-sancoes
+  cancel-in-progress: false
+jobs:
+  rodar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Rodar a rotina (log mudo; falha vai à central técnica)
+        env:
+          DEPLOY_KEYS: ${{ secrets.DEPLOY_KEYS }}
+          NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python3 scripts/rodar_rotina.py ic-sancoes

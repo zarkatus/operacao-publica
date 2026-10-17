@@ -23,6 +23,205 @@
       ],
       "intervalo_dias": 30,
       "_nota": "T5.10 p3 (04/10/2026): ensaio mensal da reserva do Supabase; código em ensaio-supabase/, não usa rodar_rotina.py"
+    },
+    "plat-daily-digest": {
+      "repo": "innovasphere-platform",
+      "ramo": "main",
+      "workflow": "plat-daily-digest.yml",
+      "timeout_s": 600,
+      "comandos": [
+        "printf \"SUPABASE_URL=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nSUPABASE_MANAGEMENT_PAT=%s\nRESEND_API_KEY=%s\n\" \"$SUPABASE_URL\" \"$SUPABASE_SERVICE_ROLE_KEY\" \"$SUPABASE_MANAGEMENT_PAT\" \"$RESEND_API_KEY\" > .env.local",
+        "node scripts/cvo-daily-digest.mjs $DRY_FLAG"
+      ],
+      "horarios_utc": [
+        "10:00"
+      ],
+      "inicio": "2026-10-18",
+      "profundidade": 50,
+      "_origem": "migrada 17/10/2026 de innovasphere-platform/.github/workflows/daily-digest.yml (Actions privado bloqueado por cobrança)"
+    },
+    "plat-daily-audit": {
+      "repo": "innovasphere-platform",
+      "ramo": "main",
+      "workflow": "plat-daily-audit.yml",
+      "timeout_s": 1200,
+      "comandos": [
+        "printf \"SUPABASE_URL=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nSUPABASE_MANAGEMENT_PAT=%s\nRESEND_API_KEY=%s\n\" \"$SUPABASE_URL\" \"$SUPABASE_SERVICE_ROLE_KEY\" \"$SUPABASE_MANAGEMENT_PAT\" \"$RESEND_API_KEY\" > .env.local",
+        "node scripts/audit-pdf-vs-json.mjs",
+        "node scripts/audit-p02-vs-anexo3a.mjs"
+      ],
+      "horarios_utc": [
+        "06:00"
+      ],
+      "inicio": "2026-10-18",
+      "_origem": "migrada 17/10/2026 de innovasphere-platform/.github/workflows/daily-audit.yml (divergência avisa pelo ntfy da central, sem issue) (Actions privado bloqueado por cobrança)"
+    },
+    "plat-ia-worker": {
+      "repo": "innovasphere-platform",
+      "ramo": "main",
+      "workflow": "plat-ia-worker.yml",
+      "timeout_s": 900,
+      "comandos": [
+        "npm install -g @anthropic-ai/claude-code >/dev/null",
+        "printf \"SUPABASE_SERVICE_ROLE_KEY=%s\nSUPABASE_SECRET_KEY=%s\nCLAUDE_CODE_OAUTH_TOKEN=%s\n\" \"$SUPABASE_SERVICE_ROLE_KEY\" \"$SUPABASE_SECRET_KEY\" \"$CLAUDE_CODE_OAUTH_TOKEN\" > .env.local",
+        "node scripts/ia-worker.mjs --uma-vez"
+      ],
+      "horarios_utc": [
+        "09:41"
+      ],
+      "inicio": "2026-10-18",
+      "_origem": "migrada 17/10/2026 de innovasphere-platform/.github/workflows/ia-worker.yml (Actions privado bloqueado por cobrança)"
+    },
+    "plat-vigia-endpoints": {
+      "repo": "innovasphere-platform",
+      "ramo": "main",
+      "workflow": "plat-vigia-endpoints.yml",
+      "timeout_s": 1200,
+      "comandos": [
+        "node scripts/vigia-endpoints.mjs"
+      ],
+      "horarios_utc": [
+        "06:00"
+      ],
+      "inicio": "2026-10-18",
+      "hc_segredo": "HC_PING_VIGIA_ENDPOINTS",
+      "_origem": "migrada 17/10/2026 de innovasphere-platform/.github/workflows/vigia-endpoints.yml (Actions privado bloqueado por cobrança)"
+    },
+    "plat-comunicado-semanal": {
+      "repo": "innovasphere-platform",
+      "ramo": "main",
+      "workflow": "plat-comunicado-semanal.yml",
+      "timeout_s": 900,
+      "comandos": [
+        "npm i playwright@1.47.2 >/dev/null 2>&1 || npm i playwright",
+        "npx playwright install --with-deps chromium",
+        "printf \"SUPABASE_URL=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nSUPABASE_MANAGEMENT_PAT=%s\nRESEND_API_KEY=%s\n\" \"$SUPABASE_URL\" \"$SUPABASE_SERVICE_ROLE_KEY\" \"$SUPABASE_MANAGEMENT_PAT\" \"$RESEND_API_KEY\" > .env.local",
+        "SEND_TO=group node scripts/digest-comunicado-pdf.mjs socios latest",
+        "SEND_TO=group node scripts/digest-comunicado-pdf.mjs time latest",
+        "[ -n \"$NO_SEND\" ] || curl -fsS -o /dev/null -X POST \"https://api.supabase.com/v1/projects/dqknyhfrrmbqvkdshjfu/database/query\" -H \"Authorization: Bearer $SUPABASE_MANAGEMENT_PAT\" -H \"Content-Type: application/json\" -d \"{\\\"query\\\":\\\"update innovasphere_data set value = jsonb_set(value,'{aprovado}','false') where key='comms_comunicado_config'\\\"}\""
+      ],
+      "horarios_utc": [
+        "12:00"
+      ],
+      "inicio": "2026-10-18",
+      "dias_semana": [
+        5
+      ],
+      "_origem": "migrada 17/10/2026 de innovasphere-platform/.github/workflows/comunicado-semanal.yml (Actions privado bloqueado por cobrança)"
+    },
+    "plat-rdo-guia-er": {
+      "repo": "innovasphere-platform",
+      "ramo": "main",
+      "workflow": "plat-rdo-guia-er.yml",
+      "timeout_s": 900,
+      "comandos": [
+        "npm i playwright@1.47.2 >/dev/null 2>&1 || npm i playwright",
+        "npx playwright install --with-deps chromium",
+        "printf \"SUPABASE_URL=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nSUPABASE_MANAGEMENT_PAT=%s\nRESEND_API_KEY=%s\n\" \"$SUPABASE_URL\" \"$SUPABASE_SERVICE_ROLE_KEY\" \"$SUPABASE_MANAGEMENT_PAT\" \"$RESEND_API_KEY\" > .env.local",
+        "node scripts/rdo-guia-er-pdf.mjs"
+      ],
+      "horarios_utc": [
+        "11:00"
+      ],
+      "inicio": "2026-10-18",
+      "dias_semana": [
+        0
+      ],
+      "_origem": "migrada 17/10/2026 de innovasphere-platform/.github/workflows/rdo-guia-er-pdf.yml (Actions privado bloqueado por cobrança)"
+    },
+    "plat-sinapi-etl": {
+      "repo": "innovasphere-platform",
+      "ramo": "main",
+      "workflow": "plat-sinapi-etl.yml",
+      "timeout_s": 6000,
+      "comandos": [
+        "npm ci --omit=dev",
+        "node scripts/sinapi-etl.mjs --latest --ufs BA,SC --cache /tmp/sinapi-cache"
+      ],
+      "horarios_utc": [
+        "09:00"
+      ],
+      "inicio": "2026-10-18",
+      "dias_mes": [
+        12,
+        15
+      ],
+      "_origem": "migrada 17/10/2026 de innovasphere-platform/.github/workflows/sinapi-etl.yml (Actions privado bloqueado por cobrança)"
+    },
+    "ic-sancoes": {
+      "repo": "innconta-site",
+      "ramo": "main",
+      "workflow": "ic-sancoes.yml",
+      "timeout_s": 5400,
+      "comandos": [
+        "pip install --quiet pdfplumber openpyxl",
+        "python .github/scripts/sancoes_carga.py",
+        "python .github/scripts/sancoes_nome_carga.py",
+        "python .github/scripts/fontes_abertas_carga.py"
+      ],
+      "horarios_utc": [
+        "09:25"
+      ],
+      "inicio": "2026-10-18",
+      "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/sancoes.yml (jobs carregar, listas-por-nome, fontes-abertas) (Actions privado bloqueado por cobrança)"
+    },
+    "ic-sancoes-lentas": {
+      "repo": "innconta-site",
+      "ramo": "main",
+      "workflow": "ic-sancoes-lentas.yml",
+      "timeout_s": 19000,
+      "comandos": [
+        "python .github/scripts/fontes_abertas_carga.py lentas"
+      ],
+      "horarios_utc": [
+        "09:25"
+      ],
+      "inicio": "2026-10-18",
+      "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/sancoes.yml (job fontes-abertas-lentas) (Actions privado bloqueado por cobrança)"
+    },
+    "ic-radar-selecao": {
+      "repo": "innconta-site",
+      "ramo": "main",
+      "workflow": "ic-radar-selecao.yml",
+      "timeout_s": 900,
+      "comandos": [
+        "python .github/scripts/radar_selecao.py $SO_LER"
+      ],
+      "horarios_utc": [
+        "10:40"
+      ],
+      "inicio": "2026-10-18",
+      "dias_semana": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "hc_segredo": "HC_PING_RADAR_SELECAO",
+      "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/radar-selecao.yml (Actions privado bloqueado por cobrança)"
+    },
+    "ic-radar-contato-site": {
+      "repo": "innconta-site",
+      "ramo": "main",
+      "workflow": "ic-radar-contato-site.yml",
+      "timeout_s": 1500,
+      "comandos": [
+        "python .github/scripts/radar_contato_site.py $SO_LER"
+      ],
+      "horarios_utc": [
+        "22:10"
+      ],
+      "inicio": "2026-10-18",
+      "dias_semana": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "hc_segredo": "HC_PING_RADAR_CONTATO_SITE",
+      "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/radar-contato-site.yml (Actions privado bloqueado por cobrança)"
     }
   }
 }

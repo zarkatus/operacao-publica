@@ -31,16 +31,24 @@ def gh(*args):
 def rotinas_devidas(agora):
     rot = json.loads((RAIZ / "rotinas.json").read_text(encoding="utf-8"))["rotinas"]
     for nome, r in rot.items():
+        # inicio (AAAA-MM-DD), dias_semana (0=seg..6=dom) e dias_mes (17/10/2026, rotinas migradas dos repos privados):
+        # filtros de calendário antes do horário; ausentes = todo dia.
+        if r.get("inicio") and agora.date().isoformat() < r["inicio"]:
+            continue
+        if "dias_semana" in r and agora.weekday() not in r["dias_semana"]:
+            continue
+        if "dias_mes" in r and agora.day not in r["dias_mes"]:
+            continue
         for h in r.get("horarios_utc", []):
             hh, mm = map(int, h.split(":"))
             alvo = agora.replace(hour=hh, minute=mm, second=0, microsecond=0)
             if agora < alvo:
                 continue
             # intervalo_dias (04/10/2026, ensaio mensal): devida se não houve run REAL nos últimos N dias (run de
-            # simulação não conta); assim um dia em que a corrente quebrou não faz perder o mês, ela recupera no seguinte.
+            # simulação/ensaio não conta); assim um dia em que a corrente quebrou não faz perder o mês, ela recupera no seguinte.
             desde = alvo - dt.timedelta(days=r["intervalo_dias"]) if r.get("intervalo_dias") else alvo
             q = gh("api", f"repos/{REPO}/actions/workflows/{r['workflow']}/runs?created=%3E%3D{desde.strftime('%Y-%m-%dT%H:%M:%SZ')}&per_page=30",
-                   "-q", '[.workflow_runs[] | select(.display_title | test("simula") | not)] | length')
+                   "-q", '[.workflow_runs[] | select(.display_title | test("simula|ensaio") | not)] | length')
             if q.returncode:
                 print(f"agendador: não consegui ler runs de {nome} (rc={q.returncode}); tento no próximo ciclo")
                 continue
