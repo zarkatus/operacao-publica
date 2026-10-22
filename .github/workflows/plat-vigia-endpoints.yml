@@ -32,6 +32,6 @@ jobs:
           DEPLOY_KEYS: ${{ secrets.DEPLOY_KEYS }}
           NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
           HC_PING_VIGIA_ENDPOINTS: ${{ secrets.HC_PING_VIGIA_ENDPOINTS }}
-          SUPABASE_PAT_dqknyhfrrmbqvkdshjfu: ${{ secrets.PLAT_SUPABASE_MANAGEMENT_PAT }}
+          SUPABASE_PAT_bfxhygqswyroswfimlvv: ${{ secrets.PLAT_SUPABASE_MANAGEMENT_PAT }}
           RESEND_API_KEY: ${{ secrets.PLAT_RESEND_API_KEY }}
         run: python3 scripts/rodar_rotina.py plat-vigia-endpoints

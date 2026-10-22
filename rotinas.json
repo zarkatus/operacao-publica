@@ -98,7 +98,7 @@
         "printf \"SUPABASE_URL=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\nSUPABASE_MANAGEMENT_PAT=%s\nRESEND_API_KEY=%s\n\" \"$SUPABASE_URL\" \"$SUPABASE_SERVICE_ROLE_KEY\" \"$SUPABASE_MANAGEMENT_PAT\" \"$RESEND_API_KEY\" > .env.local",
         "SEND_TO=group node scripts/digest-comunicado-pdf.mjs socios latest",
         "SEND_TO=group node scripts/digest-comunicado-pdf.mjs time latest",
-        "[ -n \"$NO_SEND\" ] || curl -fsS -o /dev/null -X POST \"https://api.supabase.com/v1/projects/dqknyhfrrmbqvkdshjfu/database/query\" -H \"Authorization: Bearer $SUPABASE_MANAGEMENT_PAT\" -H \"Content-Type: application/json\" -d \"{\\\"query\\\":\\\"update innovasphere_data set value = jsonb_set(value,'{aprovado}','false') where key='comms_comunicado_config'\\\"}\""
+        "[ -n \"$NO_SEND\" ] || curl -fsS -o /dev/null -X POST \"https://api.supabase.com/v1/projects/bfxhygqswyroswfimlvv/database/query\" -H \"Authorization: Bearer $SUPABASE_MANAGEMENT_PAT\" -H \"Content-Type: application/json\" -d \"{\\\"query\\\":\\\"update innovasphere_data set value = jsonb_set(value,'{aprovado}','false') where key='comms_comunicado_config'\\\"}\""
       ],
       "horarios_utc": [
         "12:00"
@@ -232,7 +232,7 @@
       "timeout_s": 1500,
       "profundidade": 50,
       "comandos": [
-        "node scripts/snapshot-funcoes.mjs dqknyhfrrmbqvkdshjfu supabase/_estado-vivo/funcoes",
+        "node scripts/snapshot-funcoes.mjs bfxhygqswyroswfimlvv supabase/_estado-vivo/funcoes",
         "echo '* -text' >> .git/info/attributes && git add -A supabase/_estado-vivo/funcoes && if git diff --cached --quiet; then echo \"sem mudança\"; else N=$(git diff --cached --name-only | wc -l); git -c user.name=\"retrato-funcoes[bot]\" -c user.email=\"central@innconta.com.br\" commit -q -m \"[skip ci] chore(estado-vivo): retrato das funções — ${N} arquivo(s) mudaram\" && git pull --rebase -q origin main && git push -q; fi",
         "N=$(sed -n \"s/^com_segredo=//p\" \"$GITHUB_OUTPUT\" 2>/dev/null | tail -1); L=$(sed -n \"s/^lista_segredo=//p\" \"$GITHUB_OUTPUT\" 2>/dev/null | tail -1); if [ -n \"$N\" ] && [ \"$N\" != \"0\" ] && [ -n \"$RESEND_API_KEY\" ]; then curl -sf -X POST https://api.resend.com/emails -H \"Authorization: Bearer $RESEND_API_KEY\" -H \"Content-Type: application/json\" -d \"$(jq -n --arg n \"$N\" --arg l \"$L\" '{from:\"noreply@innovasphere.ia.br\",to:[\"central@innconta.com.br\"],subject:(\"[ALERTA] \"+$n+\" função(ões) da plataforma com segredo literal no corpo\"),text:(\"O que quebrou: segredo chumbado no corpo de função (deveria ler do vault).\nValor observado: \"+$n+\" função(ões): \"+$l+\"\nAção: mover o valor para o cofre + vault e trocar o literal. O retrato já gravou mascarado.\")}')\" >/dev/null; fi"
       ],

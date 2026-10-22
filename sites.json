@@ -278,7 +278,7 @@
     "supabase/functions"
    ],
    "script": "node scripts/ci-deploy-functions.mjs",
-   "projeto_supabase": "dqknyhfrrmbqvkdshjfu",
+   "projeto_supabase": "bfxhygqswyroswfimlvv",
    "segredo_pat": "PLAT_SUPABASE_MANAGEMENT_PAT",
    "base_sha": "b79f56e897770991a1340e51771c5c1024a8eab1",
    "_nota": "Edge Functions da plataforma: só as tocadas desde o último commit publicado (estado no cache; base_sha = último deploy do Actions privado, 17/10/2026)"

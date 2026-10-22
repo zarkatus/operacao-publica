@@ -114,7 +114,7 @@ T_UP=$(seg); echo "t_servico_vazio=${T_UP}s (desde o pull: $((T_UP-T_PULL))s)"
 docker compose ps --format '{{.Service}}={{.State}}' | sort | tr '\n' ' '; echo
 
 # trava provada: o db não alcança produção
-B=$(docker exec supabase-db getent hosts dqknyhfrrmbqvkdshjfu.supabase.co | awk '{print $1}')
+B=$(docker exec supabase-db getent hosts bfxhygqswyroswfimlvv.supabase.co | awk '{print $1}')
 conf "trava de saída no db (prod resolve para)" "$B" "0.0.0.0"
 
 # ---------- 5. aplica a camada ----------
