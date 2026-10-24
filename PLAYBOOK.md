@@ -35,7 +35,7 @@ A franquia de repo privado (2.000 min/mês, orçamento US$ 0 com Stop usage) esg
 - Gatilho em `pull_request` é proibido neste repo (forks); só `schedule` e `workflow_dispatch`.
 
 ## Segredos (nomes; valores no cofre, índice em INVENTARIO.md)
-`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (cofre `de-documentos-12set/innovasphere-platform/.env.local`, fonte única desde a rotação de 13/09), `NTFY_TOPICO` (`ntfy-central-tecnica.txt`), `HC_PING_PUBLICAR_SITES`, `DEPLOY_KEYS` (JSON montado de `_ces-secrets/deploy-keys-operacao-publica/<repo>`).
+`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (cofre `de-documentos-12set/innovasphere-platform/.env.local`, fonte única desde a rotação de 13/09), `NTFY_TOPICO` (`ntfy-central-tecnica.txt`), `HC_PING_PUBLICAR_SITES`, `DEPLOY_KEYS` (JSON montado de `_ces-secrets/deploy-keys-operacao-publica/<repo>`). `ESPELHO_CHAVES` (`espelho-gitlab-publico-chaves.json`, regravado pelo `chaves_espelho_publico.py`), `GITLAB_MIRROR_PAT` (`gitlab-mirror-pat.txt`), `HC_PING_ESPELHO_GITLAB` (`pulso-check-espelho-gitlab-publico.txt`).
 
 ## Histórico
 - 03/10/2026 (sessão fio fornecedores-resiliencia): criado; piloto `schifino-site`.
@@ -65,3 +65,11 @@ A franquia de repo privado (2.000 min/mês, orçamento US$ 0 com Stop usage) esg
 - **Projeto que é subpasta do repo** (`reuniao/`, `cliente-portal/`): `historico: true` + `caminhos` com a pasta, senão todo commit do repo republica o projeto.
 - **Edge Functions (`tipo: supabase-funcoes`)**: o Supabase não guarda commit; o último publicado vive no cache (`_funcoes`), e sem cache vale `base_sha`. Publica só as funções tocadas pelo diff (`CHANGED_FILES`) com o `scripts/ci-deploy-functions.mjs` do próprio repo, que já trata `_shared`, `verify_jwt` e 429. O PAT entra só no publicador (`PLAT_SUPABASE_MANAGEMENT_PAT`) e é passado ao script desta entrada, nunca às etapas de curadoria. `forcar=true` nesta entrada = TODAS as funções.
 - `crm-redirect` da plataforma **não** migrou: parado desde 05/2026 e publicaria no mesmo projeto `crm-picarras-hills` que o repo do CRM.
+
+## Espelho GitHub -> GitLab sem VM (24/10/2026, fio diversificacao-vms, sessão a56bf4a7)
+- **O que é:** `scripts/espelho_gitlab.py` + `.github/workflows/espelho-gitlab.yml`, disparado pelo agendador (`rotinas.json`, `espelho-gitlab`, 00:20/06:20/12:20/18:20 UTC). Substitui o espelho da gcp-01 (`/opt/espelho-gitlab`, cache de 4,6 GB num disco de 29 GB). Não usa `rodar_rotina.py`: não há código de repo privado a rodar.
+- **Compara antes de clonar:** `ls-remote --heads --tags --refs` nos dois lados; igual = pula. Rodada típica: ~2,5 min para 43 repos, nada em disco. Mudou = `clone --mirror` num diretório temporário + `push --prune` de heads e tags.
+- **Log mudo de nomes (repo público):** só `repo #NN` (índice na ordem alfabética das chaves) e contagens; os nomes só vão no ntfy da central. Provado em 24/10: 0 nomes no log do run 40138905799.
+- **Lista de repos = chaves do segredo `ESPELHO_CHAVES`.** Repo novo ganha chave (deploy key só leitura, título `espelho-gitlab-publico`) pelo `chaves_espelho_publico.py` do notebook (`PROJECTS/espelho-sites-repos/`), que a tarefa Espelho-GitLab chama a cada ciclo; ele regrava o segredo a partir do cofre.
+- **Prova 24/10:** commit novo chegou ao GitLab (`e785307`); ramo de teste criado → espelhado → apagado no GitHub → sumiu do GitLab na rodada seguinte (resíduo 0 nos dois lados). Pulso `espelho-gitlab-publico` em `up`.
+- **Dead-man:** Pulso (`HC_PING_ESPELHO_GITLAB`, 6 h + 3 h); `/fail` quando algum repo falha nas 2 passadas. PAT recusado (401/403) é tratado como credencial, nunca como queda (AOP-01c).
