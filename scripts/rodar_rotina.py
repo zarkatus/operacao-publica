@@ -50,7 +50,9 @@ def avisar(texto):
 def ping(falhou):
     if HC:
         try:
-            urllib.request.urlopen(HC + ("/fail" if falhou else ""), timeout=15).read()
+            # 24/10: o Pulso (Cloudflare) devolve 403 ao User-Agent padrao do urllib; o Healthchecks aceita os dois.
+            urllib.request.urlopen(urllib.request.Request(HC + ("/fail" if falhou else ""),
+                                   headers={"User-Agent": "operacao-publica/rodar_rotina"}), timeout=15).read()
         except Exception:
             pass
 
