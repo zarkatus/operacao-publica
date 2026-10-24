@@ -292,6 +292,7 @@
       "ramo": "main",
       "escrita": true,
       "workflow": "ic-cnpj-recorte.yml",
+      "hc_segredo": "HC_PING_CNPJ_RECORTE",
       "timeout_s": 19800,
       "profundidade": 50,
       "comandos": [

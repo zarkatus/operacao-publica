@@ -32,6 +32,7 @@ jobs:
         env:
           DEPLOY_KEYS_ESCRITA: ${{ secrets.DEPLOY_KEYS_ESCRITA }}
           NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
+          HC_PING_CNPJ_RECORTE: ${{ secrets.HC_PING_CNPJ_RECORTE }}  # dead-man no Pulso (24/10: Healthchecks no teto de 20)
           SB_URL: ${{ secrets.SUPABASE_URL }}
           SB_SERVICE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CNPJ_MODO: ${{ inputs.ensaio == 'true' && '--amostra' || '--se-novo' }}
