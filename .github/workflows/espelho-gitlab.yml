@@ -1,0 +1,26 @@
+# Espelho GitHub -> GitLab (zarkatus -> zarkatus-mirror), SEM VM (24/10/2026, fio diversificacao-vms, peca 2).
+# Antes rodava na gcp-01 (/opt/espelho-gitlab, cache de 4,6 GB). Aqui: compara ls-remote dos dois lados e so clona o
+# repo que mudou; nada fica em disco. Log mudo de nomes (repo publico); nomes so no aviso a central (ntfy).
+# Disparo: agendador em corrente (rotinas.json, 4x/dia). Dead-man: Pulso (HC_PING_ESPELHO_GITLAB, 6 h + 3 h).
+name: Espelho GitLab
+run-name: "Espelho GitLab"
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: espelho-gitlab
+  cancel-in-progress: false
+jobs:
+  espelhar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Espelhar (log so com contagens; falha vai a central tecnica)
+        env:
+          ESPELHO_CHAVES: ${{ secrets.ESPELHO_CHAVES }}
+          GITLAB_MIRROR_PAT: ${{ secrets.GITLAB_MIRROR_PAT }}
+          NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
+          HC_PING_ESPELHO_GITLAB: ${{ secrets.HC_PING_ESPELHO_GITLAB }}
+        run: python3 scripts/espelho_gitlab.py

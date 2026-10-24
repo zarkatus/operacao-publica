@@ -331,6 +331,16 @@
       ],
       "inicio": "2026-10-19",
       "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/acompanhamento-semanal.yml (Actions privado bloqueado por cobrança; CVO 17/10: custo zero, sem regularizar). Comita de volta: deploy key de ESCRITA (DEPLOY_KEYS_ESCRITA); Google por federação (WIF) no workflow, tolerante a falha; BING_API_KEY não está no cofre (só no secret do privado), sem ela o relatório marca Bing como pendente"
+    },
+    "espelho-gitlab": {
+      "workflow": "espelho-gitlab.yml",
+      "horarios_utc": [
+        "00:20",
+        "06:20",
+        "12:20",
+        "18:20"
+      ],
+      "_origem": "24/10/2026 fio diversificacao-vms: espelho GitHub->GitLab sai da gcp-01 (cache 4,6 GB) para ca; script proprio scripts/espelho_gitlab.py (nao usa rodar_rotina: nao ha codigo de repo privado a rodar)"
     }
   }
 }
