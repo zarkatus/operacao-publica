@@ -39,6 +39,19 @@ def rotinas_devidas(agora):
             continue
         if "dias_mes" in r and agora.day not in r["dias_mes"]:
             continue
+        # a_cada_min (25/10/2026, ronda externa a cada 30 min): devida se não houve run nos últimos N minutos; uma
+        # consulta por ciclo, em vez de dezenas de horarios_utc (cada horário vencido custa uma chamada à API).
+        if r.get("a_cada_min"):
+            desde = agora - dt.timedelta(minutes=r["a_cada_min"])
+            q = gh("api", f"repos/{REPO}/actions/workflows/{r['workflow']}/runs?created=%3E%3D{desde.strftime('%Y-%m-%dT%H:%M:%SZ')}&per_page=1",
+                   "-q", ".total_count")
+            if q.returncode:
+                print(f"agendador: não consegui ler runs de {nome} (rc={q.returncode}); tento no próximo ciclo")
+            elif int(q.stdout.strip() or 0) == 0:
+                d = gh("workflow", "run", r["workflow"], "-R", REPO)
+                print(f"agendador: {nome} (a cada {r['a_cada_min']} min) disparada" if d.returncode == 0 else
+                      f"agendador: disparo de {nome} falhou rc={d.returncode}")
+            continue
         for h in r.get("horarios_utc", []):
             hh, mm = map(int, h.split(":"))
             alvo = agora.replace(hour=hh, minute=mm, second=0, microsecond=0)

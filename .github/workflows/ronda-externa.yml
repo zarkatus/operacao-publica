@@ -1,0 +1,26 @@
+# Rotina ronda-externa: código em zarkatus/innovasphere-platform (infra/pandastack/ronda-externa); roda AQUI via scripts/rodar_rotina.py.
+# Migrada em 25/10/2026 do PandaStack (crédito Free esgotado, 402): confere de fora da Oracle e do Google se as superfícies
+# públicas da Valida respondem. Disparo: agendador em corrente (rotinas.json, a_cada_min 30). Log mudo; falha vai à central técnica (ntfy).
+name: Ronda externa
+run-name: "Ronda externa"
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ronda-externa
+  cancel-in-progress: false
+jobs:
+  rodar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Rodar a rotina (log mudo; falha vai à central técnica)
+        env:
+          DEPLOY_KEYS: ${{ secrets.DEPLOY_KEYS }}
+          NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
+        run: python3 scripts/rodar_rotina.py ronda-externa
