@@ -157,8 +157,8 @@
         "pip install --quiet pdfplumber openpyxl",
         "python .github/scripts/sancoes_carga.py",
         "python .github/scripts/sancoes_nome_carga.py",
-        "python .github/scripts/fontes_abertas_carga.py",
-        "python .github/scripts/pep_carga.py"
+        "python .github/scripts/pep_carga.py",
+        "python .github/scripts/fontes_abertas_carga.py"
       ],
       "horarios_utc": [
         "09:25"
