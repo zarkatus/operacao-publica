@@ -402,6 +402,67 @@
         "SB_SERVICE": "$SUPABASE_SERVICE_ROLE_KEY",
         "PISO_MODO": "--gravar"
       }
+    },
+    "ops-prova-github": {
+      "repo": "innconta-site",
+      "ramo": "main",
+      "workflow": "ops-prova-github.yml",
+      "timeout_s": 300,
+      "comandos": [
+        "git log -1 --format=%h"
+      ],
+      "horarios_utc": [
+        "03:10"
+      ],
+      "executores": [
+        "github"
+      ],
+      "_origem": "30/10/2026 revezamento: sentinela diária do executor github (clona innconta-site com a chave só leitura do executor e grava no livro ops_execucao). Fora do ops_atrasadas: só o próprio executor a roda."
+    },
+    "ops-prova-pc": {
+      "repo": "innconta-site",
+      "ramo": "main",
+      "timeout_s": 300,
+      "comandos": [
+        "git log -1 --format=%h"
+      ],
+      "horarios_utc": [
+        "03:10"
+      ],
+      "executores": [
+        "pc"
+      ],
+      "_origem": "30/10/2026 revezamento: sentinela diária do executor pc (clona innconta-site com a chave só leitura do executor e grava no livro ops_execucao). Fora do ops_atrasadas: só o próprio executor a roda."
+    },
+    "ops-prova-oracle": {
+      "repo": "innconta-site",
+      "ramo": "main",
+      "timeout_s": 300,
+      "comandos": [
+        "git log -1 --format=%h"
+      ],
+      "horarios_utc": [
+        "03:10"
+      ],
+      "executores": [
+        "oracle"
+      ],
+      "_origem": "30/10/2026 revezamento: sentinela diária do executor oracle (clona innconta-site com a chave só leitura do executor e grava no livro ops_execucao). Fora do ops_atrasadas: só o próprio executor a roda."
+    },
+    "ops-prova-gitlab": {
+      "repo": "innconta-site",
+      "ramo": "main",
+      "timeout_s": 300,
+      "comandos": [
+        "git log -1 --format=%h"
+      ],
+      "horarios_utc": [
+        "03:10"
+      ],
+      "executores": [
+        "gitlab"
+      ],
+      "_origem": "30/10/2026 revezamento: sentinela diária do executor gitlab (clona innconta-site com a chave só leitura do executor e grava no livro ops_execucao). Fora do ops_atrasadas: só o próprio executor a roda."
     }
   }
 }
