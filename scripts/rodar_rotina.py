@@ -57,10 +57,44 @@ def ping(falhou):
             pass
 
 
+def livro(nome_rpc, corpo):
+    """Livro do revezamento (ops_*, banco do InnConta): rotina com "executores" em rotinas.json roda uma vez por rodada,
+    em quem chegar primeiro (executor/executor.py). Erro de livro aqui ABRE: o GitHub roda mesmo assim."""
+    url, k = os.environ.get("SUPABASE_URL", "").rstrip("/"), os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    req = urllib.request.Request(url + "/rest/v1/rpc/" + nome_rpc, data=json.dumps(corpo).encode(), method="POST", headers={
+        "apikey": k, "Authorization": "Bearer " + k, "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.loads(r.read().decode() or "null")
+
+
 def main():
     if not ROT:
         print(f"ERRO: rotina '{NOME}' não está em rotinas.json")
         return 2
+    for k_, v_ in ROT.get("env", {}).items():  # ambiente fixo da rotina (vale em todo executor; "$X" = segredo do executor)
+        os.environ.setdefault(k_, os.path.expandvars(v_))
+    slot = None
+    if ROT.get("executores") and not os.environ.get("OPS_SLOT") and os.environ.get("OPS_ENSAIO", "false") != "true":
+        try:
+            v = livro("ops_reivindicar", {"p_rotina": NOME, "p_executor": "github", "p_lease_min": int(ROT.get("timeout_s", 1500) / 60) + 15})
+            if v.get("ok"):
+                slot = v["slot"]
+            elif v.get("slot"):  # rodada devida já feita/rodando em outro executor
+                print(f"pulada: {v.get('motivo')}")
+                return 0
+            # sem rodada devida = disparo manual fora de horário: roda, fora do livro
+        except Exception as ex:
+            print(f"livro inacessível ({type(ex).__name__}): rodo mesmo assim")
+    rc = executar()
+    if slot:
+        try:
+            livro("ops_concluir", {"p_rotina": NOME, "p_slot": slot, "p_executor": "github", "p_ok": rc == 0, "p_detalhe": f"rc={rc}"})
+        except Exception:
+            pass
+    return rc
+
+
+def executar():
     run = (f"{os.environ.get('GITHUB_SERVER_URL', '')}/{os.environ.get('GITHUB_REPOSITORY', '')}"
            f"/actions/runs/{os.environ.get('GITHUB_RUN_ID', '')}")
     with tempfile.TemporaryDirectory() as tmp:

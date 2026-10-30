@@ -31,6 +31,7 @@ jobs:
         env:
           DEPLOY_KEYS: ${{ secrets.DEPLOY_KEYS }}
           NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
+          OPS_ENSAIO: ${{ inputs.ensaio }}
           HC_PING_RADAR_SELECAO: ${{ secrets.HC_PING_RADAR_SELECAO }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

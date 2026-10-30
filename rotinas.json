@@ -1,5 +1,5 @@
 {
-  "_leia": "Uma rotina por chave. repo/ramo = onde o código vive (privado, lido por deploy key só leitura em DEPLOY_KEYS); comandos = rodados na raiz do clone, em ordem, com os segredos que o workflow da rotina põe no ambiente por nome; workflow = arquivo .github/workflows da rotina; horarios_utc = quando o agendador em corrente (scripts/agendar.py) a dispara, uma vez por dia por horário. Rotina nova = entrada aqui + workflow pequeno + deploy key do repo. Rotina que roda no PRÓPRIO repo (sem repo/comandos, ex.: ensaio-supabase) só usa workflow/horarios_utc; \"intervalo_dias\": N = no máximo um run real a cada N dias, disparado no 1º horário devido.",
+  "_leia": "Uma rotina por chave. repo/ramo = onde o código vive (privado, lido por deploy key só leitura em DEPLOY_KEYS); comandos = rodados na raiz do clone, em ordem, com os segredos que o workflow da rotina põe no ambiente por nome; workflow = arquivo .github/workflows da rotina; horarios_utc = quando o agendador em corrente (scripts/agendar.py) a dispara, uma vez por dia por horário. Rotina nova = entrada aqui + workflow pequeno + deploy key do repo. Rotina que roda no PRÓPRIO repo (sem repo/comandos, ex.: ensaio-supabase) só usa workflow/horarios_utc; \"intervalo_dias\": N = no máximo um run real a cada N dias, disparado no 1º horário devido. 30/10/2026 (revezamento): rotina com \"executores\" roda em quem chegar primeiro (github = este repo pelo agendador; pc/oracle/gitlab = executor/executor.py), uma vez por rodada, pelo livro ops_* do banco do InnConta; \"env\" = ambiente fixo da rotina, valendo em todo executor ($X = segredo do executor). Só entra rotina idempotente que use apenas SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY do InnConta + DEPLOY_KEYS de leitura.",
   "rotinas": {
     "vigia-rodape": {
       "repo": "innconta-site",
@@ -200,7 +200,18 @@
         4
       ],
       "hc_segredo": "HC_PING_RADAR_SELECAO",
-      "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/radar-selecao.yml (Actions privado bloqueado por cobrança)"
+      "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/radar-selecao.yml (Actions privado bloqueado por cobrança)",
+      "executores": [
+        "github",
+        "pc",
+        "oracle",
+        "gitlab"
+      ],
+      "env": {
+        "RADAR_UFS": "SC,PR,RS,SP",
+        "RADAR_MIN_REAIS": "1000000",
+        "RADAR_META": "40"
+      }
     },
     "ic-radar-contato-site": {
       "repo": "innconta-site",
@@ -222,7 +233,16 @@
         4
       ],
       "hc_segredo": "HC_PING_RADAR_CONTATO_SITE",
-      "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/radar-contato-site.yml (Actions privado bloqueado por cobrança)"
+      "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/radar-contato-site.yml (Actions privado bloqueado por cobrança)",
+      "executores": [
+        "github",
+        "pc",
+        "oracle",
+        "gitlab"
+      ],
+      "env": {
+        "RADAR_CONTATO_META": "40"
+      }
     },
     "plat-snapshot-funcoes": {
       "repo": "innovasphere-platform",
@@ -370,7 +390,18 @@
         0
       ],
       "inicio": "2026-11-02",
-      "_origem": "migrada 30/10/2026 de innconta-site/.github/workflows/radar-parceiros.yml (Actions privado sem franquia). 2ª via: tarefa do PC Prospeccao-Esteira-Semanal (seg 07:20 SP = 10:20 UTC), mesmos passos, idempotentes (piso regrava a medição; radar só completa a reserva até 10 por frente). CVO 30/10: mais de um fornecedor."
+      "_origem": "migrada 30/10/2026 de innconta-site/.github/workflows/radar-parceiros.yml (Actions privado sem franquia). 2ª via: tarefa do PC Prospeccao-Esteira-Semanal (seg 07:20 SP = 10:20 UTC), mesmos passos, idempotentes (piso regrava a medição; radar só completa a reserva até 10 por frente). CVO 30/10: mais de um fornecedor.",
+      "executores": [
+        "github",
+        "pc",
+        "oracle",
+        "gitlab"
+      ],
+      "env": {
+        "SB_URL": "$SUPABASE_URL",
+        "SB_SERVICE": "$SUPABASE_SERVICE_ROLE_KEY",
+        "PISO_MODO": "--gravar"
+      }
     }
   }
 }
