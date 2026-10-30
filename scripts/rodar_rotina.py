@@ -131,7 +131,9 @@ def executar():
             with open(log, "a", encoding="utf-8") as f:
                 f.write(f"\n$ comando {i}\n")
                 f.flush()
-                rc = subprocess.run(cmd, shell=True, cwd=d, env=env, stdout=f, stderr=subprocess.STDOUT,
+                # Windows (executor do PC): os comandos são de bash ($VAR, ||, [ ]), nunca do cmd.exe
+                alvo = [env["OPS_BASH"], "-c", cmd] if env.get("OPS_BASH") else cmd
+                rc = subprocess.run(alvo, shell=not env.get("OPS_BASH"), cwd=d, env=env, stdout=f, stderr=subprocess.STDOUT,
                                     timeout=ROT.get("timeout_s", 1500)).returncode
             if rc:
                 print(f"comando {i}: FALHOU rc={rc} (detalhe na central técnica)")
