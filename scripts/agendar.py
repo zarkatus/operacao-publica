@@ -31,6 +31,10 @@ def gh(*args):
 def rotinas_devidas(agora):
     rot = json.loads((RAIZ / "rotinas.json").read_text(encoding="utf-8"))["rotinas"]
     for nome, r in rot.items():
+        # rotina de outro executor (revezamento 30/10: "executores" pc/oracle/gitlab, sem "workflow"): quem dispara é o
+        # executor dela, não o Actions. Sem este pulo o KeyError derrubou a corrente às 19:20 UTC de 30/10 (nenhum site publicou).
+        if not r.get("workflow"):
+            continue
         # inicio (AAAA-MM-DD), dias_semana (0=seg..6=dom) e dias_mes (17/10/2026, rotinas migradas dos repos privados):
         # filtros de calendário antes do horário; ausentes = todo dia.
         if r.get("inicio") and agora.date().isoformat() < r["inicio"]:
@@ -73,7 +77,10 @@ def rotinas_devidas(agora):
 
 def main():
     agora = dt.datetime.now(dt.timezone.utc)
-    rotinas_devidas(agora)
+    try:
+        rotinas_devidas(agora)
+    except Exception as e:  # rotina malformada nunca derruba a corrente de publicação
+        print(f"agendador: ERRO nas rotinas ({type(e).__name__}: {e}); sigo com a corrente")
     falta = CICLO_S - (time.time() - INICIO)
     if falta > 0:
         time.sleep(falta)
