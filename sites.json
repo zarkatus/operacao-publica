@@ -249,9 +249,12 @@
    "ramo": "main",
    "historico": true,
    "caminhos": [
-    "cliente-portal"
+    "cliente-portal",
+    "scripts/checar-icones-portal.sh"
    ],
-   "etapas": [],
+   "etapas": [
+    "sh scripts/checar-icones-portal.sh"
+   ],
    "saida": "cliente-portal",
    "projeto": "cliente-portal",
    "ramo_cf": "main"
