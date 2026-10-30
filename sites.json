@@ -238,7 +238,7 @@
    "caminhos": [
     "reuniao"
    ],
-   "etapas": [],
+   "etapas": ["python3 scripts/checar_icones.py reuniao site.webmanifest"],
    "saida": "reuniao",
    "projeto": "ces-reuniao",
    "ramo_cf": "main"
