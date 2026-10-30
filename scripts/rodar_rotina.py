@@ -111,8 +111,9 @@ def executar():
         kp.write_text(k.strip() + "\n", encoding="utf-8")
         kp.chmod(0o600)
         env = dict(os.environ)
-        env["GIT_SSH_COMMAND"] = (f"ssh -i {kp} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new "
-                                  f"-o UserKnownHostsFile={tmp}/kh")
+        # as_posix: no Windows (executor do PC) o sh do git engole a barra invertida do caminho
+        env["GIT_SSH_COMMAND"] = (f"ssh -i {kp.as_posix()} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new "
+                                  f"-o UserKnownHostsFile={pathlib.Path(tmp).as_posix()}/kh")
         d = pathlib.Path(tmp) / "r"
         url = f"git@github.com:zarkatus/{ROT['repo']}.git"
         with open(log, "a", encoding="utf-8") as f:
