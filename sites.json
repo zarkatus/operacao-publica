@@ -174,7 +174,7 @@
   {
    "repo": "crm-picarras-hills",
    "ramo": "main",
-   "etapas": [],
+   "etapas": ["python3 scripts/checar_icones.py dist manifest.json"],
    "saida": "dist",
    "projeto": "crm-picarras-hills",
    "ramo_cf": "main"
