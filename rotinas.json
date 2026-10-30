@@ -352,6 +352,25 @@
       ],
       "a_cada_min": 30,
       "_origem": "migrada 25/10/2026 do PandaStack (crédito Free esgotado ~22/10, 402; sem cartão novo por decisão do CVO 10/10); alvos em infra/pandastack/ronda-externa/alvos.json no privado"
+    },
+    "ic-esteira-prospeccao": {
+      "repo": "innconta-site",
+      "ramo": "main",
+      "workflow": "ic-esteira-prospeccao.yml",
+      "timeout_s": 1500,
+      "comandos": [
+        "pip install -q beautifulsoup4",
+        "python -X utf8 scripts/piso_notas.py $PISO_MODO",
+        "python -X utf8 .github/scripts/radar_parceiros.py --por 10 $SECO"
+      ],
+      "horarios_utc": [
+        "09:40"
+      ],
+      "dias_semana": [
+        0
+      ],
+      "inicio": "2026-11-02",
+      "_origem": "migrada 30/10/2026 de innconta-site/.github/workflows/radar-parceiros.yml (Actions privado sem franquia). 2ª via: tarefa do PC Prospeccao-Esteira-Semanal (seg 07:20 SP = 10:20 UTC), mesmos passos, idempotentes (piso regrava a medição; radar só completa a reserva até 10 por frente). CVO 30/10: mais de um fornecedor."
     }
   }
 }

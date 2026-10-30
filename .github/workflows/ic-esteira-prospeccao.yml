@@ -1,0 +1,40 @@
+# Rotina ic-esteira-prospeccao: código em zarkatus/innconta-site; roda AQUI (repo público, Actions grátis) via scripts/rodar_rotina.py.
+# Migrada em 30/10/2026 (fio prospeccao-parceiros-email-qualidade) de innconta-site/.github/workflows/radar-parceiros.yml (e tarefa do PC Prospeccao-Esteira-Semanal, que segue como 2ª via).
+# Disparo: agendador em corrente (rotinas.json). Log mudo; falha vai à central técnica (ntfy).
+name: Esteira de prospecção · piso das Notas + radar de parceiros (semanal)
+run-name: "Esteira de prospecção · piso das Notas + radar de parceiros (semanal)${{ inputs.ensaio == 'true' && ' (ensaio)' || '' }}"
+on:
+  workflow_dispatch:
+    inputs:
+      ensaio:
+        description: 'true = modo ensaio do script (não envia / só lê)'
+        required: false
+        default: 'false'
+permissions:
+  contents: read
+concurrency:
+  group: ic-esteira-prospeccao
+  cancel-in-progress: false
+jobs:
+  rodar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Rodar a rotina (log mudo; falha vai à central técnica)
+        env:
+          DEPLOY_KEYS: ${{ secrets.DEPLOY_KEYS }}
+          NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SB_URL: ${{ secrets.SUPABASE_URL }}
+          SB_SERVICE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PISO_MODO: ${{ inputs.ensaio == 'true' && '--json' || '--gravar' }}
+          SECO: ${{ inputs.ensaio == 'true' && '--seco' || '' }}
+        run: python3 scripts/rodar_rotina.py ic-esteira-prospeccao
