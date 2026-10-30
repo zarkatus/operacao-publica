@@ -108,8 +108,7 @@ def executar():
             ping(True)
             return 1
         kp = pathlib.Path(tmp) / "k"
-        kp.write_text(k.strip() + "\n", encoding="utf-8", newline="
-")  # LF: chave com CRLF (Windows) = "error in libcrypto"
+        kp.write_text(k.strip() + "\n", encoding="utf-8", newline="\n")  # LF: chave com CRLF (Windows) = "error in libcrypto"
         kp.chmod(0o600)
         env = dict(os.environ)
         # as_posix: no Windows (executor do PC) o sh do git engole a barra invertida do caminho
