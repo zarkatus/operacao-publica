@@ -211,7 +211,14 @@
         "RADAR_UFS": "SC,PR,RS,SP",
         "RADAR_MIN_REAIS": "1000000",
         "RADAR_META": "40"
-      }
+      },
+      "esparso": [
+        ".github",
+        "scripts",
+        "dados",
+        "recortes",
+        "nota"
+      ]
     },
     "ic-radar-contato-site": {
       "repo": "innconta-site",
@@ -242,7 +249,14 @@
       ],
       "env": {
         "RADAR_CONTATO_META": "40"
-      }
+      },
+      "esparso": [
+        ".github",
+        "scripts",
+        "dados",
+        "recortes",
+        "nota"
+      ]
     },
     "plat-snapshot-funcoes": {
       "repo": "innovasphere-platform",
@@ -401,7 +415,14 @@
         "SB_URL": "$SUPABASE_URL",
         "SB_SERVICE": "$SUPABASE_SERVICE_ROLE_KEY",
         "PISO_MODO": "--gravar"
-      }
+      },
+      "esparso": [
+        ".github",
+        "scripts",
+        "dados",
+        "recortes",
+        "nota"
+      ]
     },
     "ops-prova-github": {
       "repo": "innconta-site",
@@ -417,7 +438,10 @@
       "executores": [
         "github"
       ],
-      "_origem": "30/10/2026 revezamento: sentinela diária do executor github (clona innconta-site com a chave só leitura do executor e grava no livro ops_execucao). Fora do ops_atrasadas: só o próprio executor a roda."
+      "_origem": "30/10/2026 revezamento: sentinela diária do executor github (clona innconta-site com a chave só leitura do executor e grava no livro ops_execucao). Fora do ops_atrasadas: só o próprio executor a roda.",
+      "esparso": [
+        ".github"
+      ]
     },
     "ops-prova-pc": {
       "repo": "innconta-site",
@@ -432,7 +456,10 @@
       "executores": [
         "pc"
       ],
-      "_origem": "30/10/2026 revezamento: sentinela diária do executor pc (clona innconta-site com a chave só leitura do executor e grava no livro ops_execucao). Fora do ops_atrasadas: só o próprio executor a roda."
+      "_origem": "30/10/2026 revezamento: sentinela diária do executor pc (clona innconta-site com a chave só leitura do executor e grava no livro ops_execucao). Fora do ops_atrasadas: só o próprio executor a roda.",
+      "esparso": [
+        ".github"
+      ]
     },
     "ops-prova-oracle": {
       "repo": "innconta-site",
@@ -447,7 +474,10 @@
       "executores": [
         "oracle"
       ],
-      "_origem": "30/10/2026 revezamento: sentinela diária do executor oracle (clona innconta-site com a chave só leitura do executor e grava no livro ops_execucao). Fora do ops_atrasadas: só o próprio executor a roda."
+      "_origem": "30/10/2026 revezamento: sentinela diária do executor oracle (clona innconta-site com a chave só leitura do executor e grava no livro ops_execucao). Fora do ops_atrasadas: só o próprio executor a roda.",
+      "esparso": [
+        ".github"
+      ]
     },
     "ops-prova-gitlab": {
       "repo": "innconta-site",
@@ -462,7 +492,10 @@
       "executores": [
         "gitlab"
       ],
-      "_origem": "30/10/2026 revezamento: sentinela diária do executor gitlab (clona innconta-site com a chave só leitura do executor e grava no livro ops_execucao). Fora do ops_atrasadas: só o próprio executor a roda."
+      "_origem": "30/10/2026 revezamento: sentinela diária do executor gitlab (clona innconta-site com a chave só leitura do executor e grava no livro ops_execucao). Fora do ops_atrasadas: só o próprio executor a roda.",
+      "esparso": [
+        ".github"
+      ]
     }
   }
 }

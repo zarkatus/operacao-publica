@@ -117,8 +117,15 @@ def executar():
         d = pathlib.Path(tmp) / "r"
         url = f"git@github.com:zarkatus/{ROT['repo']}.git"
         with open(log, "a", encoding="utf-8") as f:
-            rc = subprocess.run(["git", "clone", "-q", "--depth", str(ROT.get("profundidade", 1)), "--branch", ROT.get("ramo", "main"), url,
-                                 str(d)], env=env, stdout=f, stderr=subprocess.STDOUT, timeout=300).returncode
+            # "esparso": [pastas] (30/10/2026, revezamento): clone parcial só com essas pastas + arquivos da raiz; o
+            # innconta-site inteiro tem 2,6 GB e não cabe em toda rodada fora do GitHub (PC, Oracle, GitLab)
+            esp = ROT.get("esparso")
+            extra = ["--filter=blob:none", "--sparse"] if esp else []
+            rc = subprocess.run(["git", "clone", "-q", *extra, "--depth", str(ROT.get("profundidade", 1)), "--branch", ROT.get("ramo", "main"), url,
+                                 str(d)], env=env, stdout=f, stderr=subprocess.STDOUT, timeout=900).returncode
+            if not rc and esp:
+                rc = subprocess.run(["git", "-C", str(d), "sparse-checkout", "set", *esp], env=env, stdout=f,
+                                    stderr=subprocess.STDOUT, timeout=900).returncode
         if rc:
             print(f"FALHOU: clone rc={rc}")
             avisar(f"Rotina {NOME}: clone de {ROT['repo']} falhou (rc={rc}).\nRun: {run}\n\n" + cauda(log))
