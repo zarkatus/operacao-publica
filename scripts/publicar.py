@@ -23,6 +23,8 @@ import pathlib
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.error
 import urllib.request
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
@@ -72,8 +74,20 @@ def sha_publicado(site):
     url = (f"https://api.cloudflare.com/client/v4/accounts/{CF_CONTA}/pages/projects/"
            f"{site['projeto']}/deployments?env=production")
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {CF_TOKEN}"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        res = json.load(resp).get("result") or []
+    # 02/11/2026: 429/5xx passageiro da API derrubava a publicação inteira (36 runs vermelhas em 7 dias)
+    for tent in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                res = json.load(resp).get("result") or []
+            break
+        except urllib.error.HTTPError as e:
+            if e.code != 429 and e.code < 500 or tent == 3:
+                raise
+            time.sleep(5 * 3 ** tent)
+        except (urllib.error.URLError, TimeoutError):
+            if tent == 3:
+                raise
+            time.sleep(5 * 3 ** tent)
     for d in res:  # mais recente primeiro; ignora publicação que não terminou bem
         if (d.get("latest_stage") or {}).get("status") == "success":
             return ((d.get("deployment_trigger") or {}).get("metadata") or {}).get("commit_hash")

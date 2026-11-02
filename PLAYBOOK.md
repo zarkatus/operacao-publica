@@ -99,3 +99,6 @@ A franquia de repo privado (2.000 min/mês, orçamento US$ 0 com Stop usage) esg
 - **Resend da InnConta (e-mail, janela dia):** `resend-innconta` medido de hora em hora pelo medidor e a cada lote pela rota `innconta-site/functions/api/prospeccao-parceiros.js` (commit 402b2509), que corta o lote para caber em floor(100 × 0,79) − enviados hoje − 1; sem leitura da lista do Resend não envia (falha fechada, é e-mail a terceiro). Prova 30/10 na live: 198/100 → `enviados 0, motivo bypass`, fila e convites sem resíduo. Quem estourou em 30/10: campanha de corretores InnCorporate (124), ainda no Resend; item `resend-198-30out` na fila do fio email-resend-cota-e-redundancia.
 - **Falha aberta:** medição velha não bloqueia (senão um medidor parado pararia tudo); o vigia acusa. Repositório público (este) não tem franquia de minutos e por isso o executor `github` não consta em cota.
 - **Prova 30/10:** fornecedor fictício a 80% → `ops_reivindicar` recusou com `bypass`; 78% → liberado; medição de 30 h a 90% → liberado (falha aberta); GitLab a 95% → `ops_atrasadas_qtd` = 0; resíduo de teste 0.
+
+## Publicar: erro passageiro da API não derruba a rodada (02/11/2026, fio painel-controle-infra)
+- `sha_publicado` repete 429/5xx/rede até 4 vezes (5, 15, 45 s). Antes: 36 runs vermelhas em 7 dias com site em dia. 4xx segue falhando na hora.
