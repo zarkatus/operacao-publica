@@ -102,3 +102,9 @@ A franquia de repo privado (2.000 min/mês, orçamento US$ 0 com Stop usage) esg
 
 ## Publicar: erro passageiro da API não derruba a rodada (02/11/2026, fio painel-controle-infra)
 - `sha_publicado` repete 429/5xx/rede até 4 vezes (5, 15, 45 s). Antes: 36 runs vermelhas em 7 dias com site em dia. 4xx segue falhando na hora.
+
+## Automação não usa a API de gestão do Supabase (02/11/2026, fio actions-redundancia)
+- Teto: 120/min por usuário, projeto e rota. Medido 02/11: 71/min de fundo (pico 100), quase tudo do notebook em consultas repetidas. O `sql()` de `_ferramentas/saude-pc/sql_plataforma.py` passou a usar o pooler (`sql_porta.py`): 11/min (pico 22), 36-74 ms contra 1.200 ms por consulta. `SQL_PORTA=0` desliga.
+- Prova: `saude-pc/teste_sql_porta.py` (mesma consulta nos dois caminhos) e `teste_sql_porta_falha.py`. Só passa pela porta o comando único, sozinho ou em `begin; set local...; comando; commit`. O resto vai pela API de gestão: multi-comando devolve resultado diferente no psycopg2.
+- Pooler conta egress (doc do Supabase); se a API de gestão conta, a doc não diz. Medir antes de levar mais carga.
+- Desenho para sair do pg_cron: relógio redundante, trabalho no banco (`ops_tick`), externo só acorda se atrasar. Copiar os crons para fora é 12 mil chamadas/dia, pico 53/min, sobre este teto. Ainda não construído.
