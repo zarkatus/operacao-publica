@@ -164,6 +164,8 @@
         "09:25"
       ],
       "inicio": "2026-10-18",
+      "executores": ["github", "pc", "gitlab"],
+      "esparso": [".github", "scripts"],
       "_origem": "migrada 17/10/2026 de innconta-site/.github/workflows/sancoes.yml (jobs carregar, listas-por-nome, fontes-abertas) (Actions privado bloqueado por cobrança)"
     },
     "ic-sancoes-lentas": {
