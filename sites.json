@@ -285,6 +285,19 @@
    "segredo_pat": "PLAT_SUPABASE_MANAGEMENT_PAT",
    "base_sha": "b79f56e897770991a1340e51771c5c1024a8eab1",
    "_nota": "Edge Functions da plataforma: só as tocadas desde o último commit publicado (estado no cache; base_sha = último deploy do Actions privado, 17/10/2026)"
+  },
+  {
+   "id": "escola-videos",
+   "repo": "ces-site",
+   "ramo": "main",
+   "caminhos": [
+    "public/escola/v"
+   ],
+   "etapas": [],
+   "saida": "public/escola/v",
+   "projeto": "escola-videos",
+   "ramo_cf": "main",
+   "_nota": "05-06/11/2026 TESTE Canteiro Escola: www.ces.eng.br não honra Range (200 em vez de 206); este projeto Pages separado serve só os vídeos/guias liberados. Se honrar 206, apontar cat.json para ele; se não, remover."
   }
  ]
 }
