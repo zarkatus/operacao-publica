@@ -125,6 +125,14 @@ def chave(site):
     return site.get("id") or site["repo"]
 
 
+def pacto95(d, env, log):
+    """CPP-01 (CVO 07/11/2026): nenhum consumo sem provisionamento. Antes de montar ou publicar QUALQUER alvo, o clone
+    tem de ter pacto95.json + pacto95.selo conferindo e todo consumidor derivado do código (Edge Function, cron do
+    Actions) no manifesto. Verificador: scripts/pacto95-selo.mjs (cópia da canônica em painel-controle). Falha fechada."""
+    if rodar(["node", str(RAIZ / "scripts" / "pacto95-selo.mjs"), str(d)], d, env, log, timeout=120):
+        raise Falha("pacto95 (CPP-01) recusou: consumo sem escrituração", cauda(log))
+
+
 def publicar_funcoes(site, env, tmp, pub=None):
     """tipo "supabase-funcoes": publica só as Edge Functions tocadas desde o último commit publicado (estado no
     cache, estado/falhas.json → _funcoes; sem cache vale site["base_sha"]), pelo script do próprio repo
@@ -136,6 +144,7 @@ def publicar_funcoes(site, env, tmp, pub=None):
              tmp, env, log, timeout=600):
         raise Falha("clone falhou", cauda(log))
     got = subprocess.run(["git", "rev-parse", "HEAD"], cwd=d, capture_output=True, text=True).stdout.strip()
+    pacto95(d, env, log)
     pat = SEG.get(site.get("segredo_pat", "PLAT_SUPABASE_MANAGEMENT_PAT"))
     if not pat:
         raise Falha("PAT do Supabase ausente no ambiente do publicador")
@@ -164,6 +173,7 @@ def publicar(site, sha, env, tmp, pub=None):
              tmp, env, log, timeout=600):
         raise Falha("clone falhou", cauda(log))
     got = subprocess.run(["git", "rev-parse", "HEAD"], cwd=d, capture_output=True, text=True).stdout.strip()
+    pacto95(d, env, log)
     if sem_mudanca_de_app(site, d, pub, got):
         return got, None
     env_etapa = dict(env, GITHUB_WORKSPACE=str(d))  # script que lê a variável em vez do argumento acha o clone
