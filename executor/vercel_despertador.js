@@ -4,7 +4,7 @@
 // Segredos (env): SB_ANON, GATILHO ("<projeto>:<token>"), PROVA, CRON_SECRET.
 async function despertar(forcar) {
   const e = process.env;
-  const r = await fetch("https://gprkopmqhocsslrdmebm.supabase.co/rest/v1/rpc/ops_atrasadas_qtd", { method: "POST",
+  const r = await fetch("https://dados.innovasphere.ia.br/gprkopmqhocsslrdmebm/rest/v1/rpc/ops_atrasadas_qtd", { method: "POST",
     headers: { apikey: e.SB_ANON, Authorization: "Bearer " + e.SB_ANON, "Content-Type": "application/json" }, body: "{}" });
   if (!r.ok) return "livro inacessível " + r.status;
   const n = await r.json();

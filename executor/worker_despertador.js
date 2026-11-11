@@ -2,7 +2,7 @@
 // lê no livro do InnConta só a CONTAGEM de rodadas atrasadas (chave anônima pública); havendo, acorda o executor GitLab.
 // GET /?forcar=1 com o cabeçalho x-prova = PROVA acorda sempre (prova manual). Segredos: SB_ANON, GATILHO ("<projeto>:<token>"), PROVA.
 async function despertar(env, forcar) {
-  const r = await fetch("https://gprkopmqhocsslrdmebm.supabase.co/rest/v1/rpc/ops_atrasadas_qtd", { method: "POST",
+  const r = await fetch("https://dados.innovasphere.ia.br/gprkopmqhocsslrdmebm/rest/v1/rpc/ops_atrasadas_qtd", { method: "POST",
     headers: { apikey: env.SB_ANON, Authorization: "Bearer " + env.SB_ANON, "Content-Type": "application/json" }, body: "{}" });
   if (!r.ok) return "livro inacessível " + r.status;
   const n = await r.json();
