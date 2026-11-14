@@ -30,7 +30,7 @@ import urllib.request
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 SITES = json.loads((RAIZ / "sites.json").read_text(encoding="utf-8"))["sites"]
 _NOMES = ("CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "NTFY_TOPICO", "HC_PING_PUBLICAR_SITES",
-          "PLAT_SUPABASE_MANAGEMENT_PAT")
+          "PLAT_SUPABASE_MANAGEMENT_PAT", "CLOUDFLARE_DNS_TOKEN_INNOVAPEOPLE")
 SEG = {n: os.environ.pop(n, "") for n in _NOMES}  # sai do ambiente: etapas do repo privado nunca herdam
 try:
     CHAVES = json.loads(os.environ.pop("DEPLOY_KEYS", "") or "{}")  # {"<repo>": "<chave privada só leitura>"}
@@ -194,6 +194,42 @@ def publicar(site, sha, env, tmp, pub=None):
     return got, n
 
 
+def publicar_multi_ciclo(s, k, estado):
+    """tipo "multi" (um repo, uma pasta por subdominio; ver scripts/multi.py). Devolve (falhas_novas, pendentes).
+    Cache em estado/falhas.json -> _multi: [HEAD, epoch, tudo_ok]. Pula se o HEAD nao mudou (tudo ok: ate 6 h, que
+    tambem e o autoconserto de dominio/DNS; com falha: 30 min). Um repo com erro nao derruba os demais sites."""
+    import multi
+    cab = estado.setdefault("_multi", {})
+    with tempfile.TemporaryDirectory() as tmp:
+        rem = None
+        try:
+            env = env_ssh(s["repo"], tmp)
+            rem = sha_remoto(s, env)
+            ag = cab.get(k)
+            if ag and ag[0] == rem and not FORCAR and time.time() - ag[1] < (6 * 3600 if ag[2] else 1800):
+                print(f"{k}: em dia ({rem[:7]}, conferido ha {int(time.time() - ag[1]) // 60} min)")
+                return [], ([] if ag[2] else [k])
+            dns_tok = SEG.get(s.get("segredo_dns", ""), "")
+            if not dns_tok:
+                raise Falha("token DNS do multi ausente no ambiente do publicador")
+            ctx = {"cf_token": CF_TOKEN, "conta": CF_CONTA, "dns_token": dns_tok, "forcar": FORCAR,
+                   "estado": estado, "rodar": rodar, "cauda": cauda, "pacto95": pacto95, "env_base": env}
+            head, linhas, novas, pend = multi.rodar(s, env, tmp, ctx)
+            for ln in linhas:
+                print(ln)
+            cab[k] = [head, time.time(), not (novas or pend)]
+            return novas, pend
+        except Exception as ex:
+            curto = getattr(ex, "curto", type(ex).__name__)  # Falha daqui ou de multi.py
+            detalhe = getattr(ex, "detalhe", str(ex))
+            if estado.get(k) == [rem, curto]:
+                print(f"{k}: FALHOU de novo, {curto} (central ja avisada)")
+                return [], [k]
+            estado[k] = [rem, curto]
+            print(f"{k}: FALHOU, {curto} (detalhe na central tecnica)")
+            return [f"{k}: {curto}\n{detalhe}"], []
+
+
 def avisar_central(texto):
     topico = SEG.get("NTFY_TOPICO")
     if not topico:
@@ -235,6 +271,11 @@ def main():
     for s in alvo:
         rem = None
         k = chave(s)
+        if s.get("tipo") == "multi":
+            falhas_m, pend_m = publicar_multi_ciclo(s, k, estado)
+            falhas.extend(falhas_m)
+            pendentes.extend(pend_m)
+            continue
         funcoes = s.get("tipo") == "supabase-funcoes"
         with tempfile.TemporaryDirectory() as tmp:
             try:

@@ -41,6 +41,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           DEPLOY_KEYS: ${{ secrets.DEPLOY_KEYS }}
           PLAT_SUPABASE_MANAGEMENT_PAT: ${{ secrets.PLAT_SUPABASE_MANAGEMENT_PAT }}   # só a entrada tipo supabase-funcoes (sites.json)
+          CLOUDFLARE_DNS_TOKEN_INNOVAPEOPLE: ${{ secrets.CLOUDFLARE_DNS_TOKEN_INNOVAPEOPLE }}   # só a entrada tipo multi (rhia-innovapeople): DNS da zona innovapeople.com.br
           NTFY_TOPICO: ${{ secrets.NTFY_TOPICO }}
           HC_PING_PUBLICAR_SITES: ${{ secrets.HC_PING_PUBLICAR_SITES }}
           SITE: ${{ github.event.inputs.site }}
