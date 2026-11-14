@@ -206,7 +206,7 @@ def publicar_multi_ciclo(s, k, estado):
             env = env_ssh(s["repo"], tmp)
             rem = sha_remoto(s, env)
             ag = cab.get(k)
-            if ag and ag[0] == rem and not FORCAR and time.time() - ag[1] < (6 * 3600 if ag[2] else 1800):
+            if ag and len(ag) > 3 and ag[3] == multi.VERSAO and ag[0] == rem and not FORCAR and time.time() - ag[1] < (6 * 3600 if ag[2] else 1800):
                 print(f"{k}: em dia ({rem[:7]}, conferido ha {int(time.time() - ag[1]) // 60} min)")
                 return [], ([] if ag[2] else [k])
             dns_tok = SEG.get(s.get("segredo_dns", ""), "")
@@ -217,7 +217,7 @@ def publicar_multi_ciclo(s, k, estado):
             head, linhas, novas, pend = multi.rodar(s, env, tmp, ctx)
             for ln in linhas:
                 print(ln)
-            cab[k] = [head, time.time(), not (novas or pend)]
+            cab[k] = [head, time.time(), not (novas or pend), multi.VERSAO]
             return novas, pend
         except Exception as ex:
             curto = getattr(ex, "curto", type(ex).__name__)  # Falha daqui ou de multi.py

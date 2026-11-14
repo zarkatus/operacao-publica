@@ -27,6 +27,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import checar_pasta_site as regra  # noqa: E402
 
 API = "https://api.cloudflare.com/client/v4"
+VERSAO = 2   # sobe quando a logica muda: o cache de "em dia" do publicar.py e descartado e a corrente reaplica tudo
 LIMITE_PROJETOS = 95      # TTO-01: 100 projetos Pages por conta (plano gratis); para a 95
 REPETE_FALHA_S = 1800     # label que falhou volta a ser tentado depois de 30 min (falha passageira), sem reavisar
 BASE_HEADERS = ("/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n"
