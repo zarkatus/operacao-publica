@@ -289,6 +289,18 @@
    "segredo_pat": "PLAT_SUPABASE_MANAGEMENT_PAT",
    "base_sha": "b79f56e897770991a1340e51771c5c1024a8eab1",
    "_nota": "Edge Functions da plataforma: só as tocadas desde o último commit publicado (estado no cache; base_sha = último deploy do Actions privado, 17/10/2026)"
+  },
+  {
+   "repo": "rhia-innovapeople",
+   "ramo": "main",
+   "tipo": "multi",
+   "pasta": "sites",
+   "raiz": "_raiz",
+   "sufixo": "rhia.innovapeople.com.br",
+   "prefixo_projeto": "rhia-",
+   "projeto_raiz": "rhia",
+   "zona_id": "5e6f50228623c809a26e4cc509b25b46",
+   "segredo_dns": "CLOUDFLARE_DNS_TOKEN_INNOVAPEOPLE"
   }
  ]
 }
