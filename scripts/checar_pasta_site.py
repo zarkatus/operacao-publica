@@ -29,6 +29,13 @@ TETO_ARQUIVO = 25 * 1024 * 1024        # limite do Pages por arquivo
 TETO_ARQUIVOS = 5000                   # o Pages aceita 20.000; aqui sobra folga e pega pasta errada
 TETO_TOTAL = 150 * 1024 * 1024
 EXT_TEXTO = {".html", ".htm", ".js", ".mjs", ".css", ".json", ".txt", ".svg", ".xml", ".webmanifest", ".map"}
+# LISTA DE PERMISSAO (PAR-01a): o que nao esta aqui nao vai ao ar (.csv, .xlsx, .cjs, .zip, .docx... reprovam)
+EXT_BINARIAS = {".ico", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".woff", ".woff2", ".ttf", ".otf", ".eot",
+                ".pdf", ".mp4", ".webm", ".mp3", ".ogg", ".wav", ".m4a"}
+EXT_PERMITIDAS = EXT_TEXTO | EXT_BINARIAS
+# arquivos que o Cloudflare Pages trata como CODIGO/ROTA do servidor: nunca vindos de pasta de terceiro
+NOME_ESPECIAL = {"_worker.js", "_routes.json", "_redirects", "_middleware.js", "_middleware.ts"}
+HEADERS_OK = {"cache-control", "x-robots-tag", "content-security-policy", "permissions-policy"}
 OBRIGATORIOS = ["index.html", "favicon.ico", "favicon-32.png", "apple-touch-icon.png", "icon-192.png",
                 "icon-512.png", "site.webmanifest"]
 NOME_PROIBIDO = re.compile(r"(^\.env|\.env($|\.)|\.pem$|\.key$|\.p12$|\.pfx$|\.bak|~$|\.sqlite3?$|\.db$|^id_(rsa|ed25519)|\.sh$|\.ps1$|\.py$)", re.I)
@@ -43,7 +50,23 @@ SEGREDOS = [
     (re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}"), "token do Slack"),
     (re.compile(r"\bcfut_[A-Za-z0-9]{30,}"), "token da Cloudflare"),
 ]
-JWT = re.compile(r"\beyJ[A-Za-z0-9_\-]{10,}\.(eyJ[A-Za-z0-9_\-]{10,})\.[A-Za-z0-9_\-]{10,}")
+_SEG_JWT = re.compile(r"[A-Za-z0-9_.\-]+")   # trecho de token (base64url e pontos): varredura LINEAR, sem backtracking
+
+
+def _jwt_service_role(t):
+    """True se houver JWT cujo corpo traga service_role. Custo linear no tamanho do texto (a regex antiga era quadratica)."""
+    for m in _SEG_JWT.finditer(t):
+        partes = m.group(0).split(".")
+        for i in range(len(partes) - 2):
+            a, b, c = partes[i], partes[i + 1], partes[i + 2]
+            if a.startswith("eyJ") and b.startswith("eyJ") and len(b) >= 13 and len(c) >= 10:
+                try:
+                    corpo = b + "=" * (-len(b) % 4)
+                    if "service_role" in base64.urlsafe_b64decode(corpo).decode("utf-8", "replace"):
+                        return True
+                except Exception:
+                    pass
+    return False
 # padrao montado em partes de proposito: este arquivo DETECTA e RECUSA o uso; nao chama nada
 _LITERAIS_BD = ("supa" + "base.co", "functions" + "/v1/")   # substring, nunca regex: regex sobre bundle minificado e quadratica
 _MSG_BD = "chamada a banco/funcao de terceiro: consumo sem provisionamento (CPP-01). Fale com o administrador antes"
@@ -67,9 +90,23 @@ def _emails_distintos(t, ate):
     return achados
 
 
+_CPF_SEM_PONTO = re.compile(r"(?<!\d)\d{11}(?!\d)")
+
+
+def _cpf_valido(s):
+    if len(set(s)) == 1:
+        return False
+    for n in (9, 10):
+        soma = sum(int(s[i]) * (n + 1 - i) for i in range(n))
+        if (soma * 10 % 11) % 10 != int(s[n]):
+            return False
+    return True
+
+
 def dados_pessoais(t):
     """Motivo (str) se o texto parece base de dados de pessoas embutida; senao None. LGPD: site estatico e publico."""
-    cpfs = set(CPF.findall(t))
+    cpfs = {re.sub(r"\D", "", c) for c in CPF.findall(t)}
+    cpfs |= {c for c in _CPF_SEM_PONTO.findall(t) if _cpf_valido(c)}
     if len(cpfs) >= 3:
         return f"{len(cpfs)} CPFs distintos"
     emails = _emails_distintos(t, 40)
@@ -113,6 +150,10 @@ def checar(pasta, label):
     for raiz, dirs, nomes in os.walk(pasta):
         r = pathlib.Path(raiz)
         rel_dir = r.relative_to(pasta)
+        for d in list(dirs):   # link simbolico seria seguido pelo publicador e levaria arquivo de FORA ao ar
+            if (r / d).is_symlink():
+                erros.append(f"{(rel_dir / d).as_posix()}: link simbolico nao e permitido")
+                dirs.remove(d)
         # dotdirs nao sao publicados (so .well-known); node_modules e sinal de pasta errada
         dirs[:] = [d for d in dirs if not (d.startswith(".") and d != ".well-known")]
         if "node_modules" in dirs:
@@ -122,6 +163,9 @@ def checar(pasta, label):
             erros.append("pasta 'functions': codigo de servidor nao e publicado; so arquivos estaticos")
             dirs.remove("functions")
         for n in nomes:
+            if (r / n).is_symlink():
+                erros.append(f"{(rel_dir / n).as_posix()}: link simbolico nao e permitido")
+                continue
             if n.startswith(".") and rel_dir.parts[:1] != (".well-known",):
                 continue
             arquivos.append(r / n)
@@ -142,6 +186,15 @@ def checar(pasta, label):
         if NOME_PROIBIDO.search(p.name):
             erros.append(f"{rel}: tipo de arquivo que nao pode ir ao ar (credencial, backup, banco ou script)")
             continue
+        if p.name in NOME_ESPECIAL:
+            erros.append(f"{rel}: arquivo de servidor/rota do Pages ({p.name}) nao e permitido; so arquivos estaticos")
+            continue
+        if rel == "_headers":
+            continue   # validado a parte, abaixo
+        suf = p.suffix.lower()
+        if suf not in EXT_PERMITIDAS and not (suf == "" and rel.startswith(".well-known/")):
+            erros.append(f"{rel}: tipo '{suf or 'sem extensao'}' nao esta na lista de permitidos (site estatico: html, css, js, imagens, fontes, pdf, midia)")
+            continue
         if p.suffix.lower() in EXT_TEXTO and tam <= TETO_ARQUIVO:
             t = _texto(p)
             motivo = dados_pessoais(t)
@@ -150,18 +203,21 @@ def checar(pasta, label):
             for rx, nome in SEGREDOS:
                 if rx.search(t):
                     erros.append(f"{rel}: contem {nome}. Segredo nunca vai a site estatico; tire e avise o administrador")
-            for m in JWT.finditer(t):
-                try:
-                    corpo = m.group(1) + "=" * (-len(m.group(1)) % 4)
-                    if "service_role" in base64.urlsafe_b64decode(corpo).decode("utf-8", "replace"):
-                        erros.append(f"{rel}: contem chave de servico (service_role)")
-                except Exception:
-                    pass
+            if _jwt_service_role(t):
+                erros.append(f"{rel}: contem chave de servico (service_role)")
             tl = t.lower()
             if any(s in tl for s in _LITERAIS_BD):
                 erros.append(f"{rel}: {_MSG_BD}")
             if p.suffix.lower() in (".html", ".htm") and AVISO_TRAVESSAO.search(t):
                 avisos.append(f"{rel}: tem travessao; a marca InnovaPeople usa so hifen")
+    hd = pasta / "_headers"
+    if hd.is_file() and not hd.is_symlink():
+        for n_, ln in enumerate(_texto(hd).splitlines(), 1):
+            if not ln.strip() or ln.lstrip().startswith("#") or not ln[:1].isspace():
+                continue   # linha de caminho (comeca na coluna 0) ou vazia
+            nome_h = ln.strip().split(":", 1)[0].strip()
+            if nome_h.startswith("!") or nome_h.lower() not in HEADERS_OK:
+                erros.append(f"_headers linha {n_}: cabecalho '{nome_h[:40]}' nao permitido (so {', '.join(sorted(HEADERS_OK))})")
     if total > TETO_TOTAL:
         erros.append(f"pasta com {total // 1048576} MB (teto {TETO_TOTAL // 1048576} MB)")
     for o in OBRIGATORIOS:

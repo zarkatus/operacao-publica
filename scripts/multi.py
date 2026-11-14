@@ -16,6 +16,7 @@ Log publico MUDO (PAR-01a): saida de git/wrangler vai a arquivo; o detalhe das f
 """
 import json
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -27,8 +28,12 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import checar_pasta_site as regra  # noqa: E402
 
 API = "https://api.cloudflare.com/client/v4"
-VERSAO = 2   # sobe quando a logica muda: o cache de "em dia" do publicar.py e descartado e a corrente reaplica tudo
+VERSAO = 3   # sobe quando a logica muda: o cache de "em dia" do publicar.py e descartado e a corrente reaplica tudo
 LIMITE_PROJETOS = 95      # TTO-01: 100 projetos Pages por conta (plano gratis); para a 95
+LIMITE_POR_REPO = 30      # projetos Pages que UM repo multi pode ter (pacto95.json declara 30; aqui e aplicado, falha fechada)
+TETO_CICLO_S = 1500       # um ciclo nao passa de 25 min: o resto fica para o proximo (o job do Actions tem 30)
+MSG_PUB, MSG_RET = "publicar-sites", "retirado"   # vai no commit-message do deploy: ativo x retirado entram na comparacao
+_PROJ = re.compile(r"^[a-z0-9][a-z0-9-]{0,57}$")
 REPETE_FALHA_S = 1800     # label que falhou volta a ser tentado depois de 30 min (falha passageira), sem reavisar
 BASE_HEADERS = ("/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n"
                 "  X-Frame-Options: SAMEORIGIN\n/_versao.txt\n  Cache-Control: no-store\n")
@@ -77,30 +82,41 @@ def host_de(site, label):
 
 
 def projeto_de(site, label):
-    if label == site.get("raiz", "_raiz"):
-        return site["projeto_raiz"]
-    return f"{site['prefixo_projeto']}{label}"
+    """Nome de projeto SEMPRE validado: vira trecho de URL da API e argumento do wrangler (travessia '/../' atingiria outro projeto)."""
+    p = site["projeto_raiz"] if label == site.get("raiz", "_raiz") else f"{site['prefixo_projeto']}{label}"
+    if not _PROJ.match(p):
+        raise Falha(f"nome de projeto invalido: {label[:30]!r}")
+    return p
 
 
-def contar_projetos(c):
-    n = 0
+def contar_projetos(c, site):
+    """-> (total da conta, deste repo). Falha FECHADA: resposta ruim (429, 5xx) nao vira contagem baixa."""
+    n, meus = 0, 0
     for pg in range(1, 31):
         s, r = cf("GET", f"/accounts/{c['conta']}/pages/projects?page={pg}", c["cf_token"])
-        lote = (r.get("result") or []) if s == 200 else []
+        if s != 200:
+            raise Falha(f"contar projetos Pages HTTP {s}: nao crio projeto sem saber o total", _erros(r))
+        lote = r.get("result") or []
         if not lote:
             break
         n += len(lote)
-    return n
+        meus += sum(1 for x in lote if str(x.get("name", "")).startswith(site["prefixo_projeto"]) or x.get("name") == site["projeto_raiz"])
+    return n, meus
 
 
-def garantir_projeto(c, projeto):
+def garantir_projeto(c, site, projeto):
     s, r = cf("GET", f"/accounts/{c['conta']}/pages/projects/{projeto}", c["cf_token"])
     if s == 200:
+        if (r.get("result") or {}).get("name") != projeto:   # a API devolveu OUTRO projeto: nunca publicar nele
+            raise Falha("a API devolveu um projeto diferente do pedido; abortado")
         return (r.get("result") or {}).get("subdomain") or f"{projeto}.pages.dev"
     if s != 404:
         raise Falha(f"consulta ao projeto Pages HTTP {s}", _erros(r))
-    if contar_projetos(c) >= LIMITE_PROJETOS:
-        raise Falha("teto de projetos Pages (TTO-01, 95 de 100) atingido; nao cria projeto novo")
+    total, meus = contar_projetos(c, site)
+    if total >= LIMITE_PROJETOS:
+        raise Falha("teto de projetos Pages (TTO-01, 95 de 100 na conta) atingido; nao cria projeto novo")
+    if meus >= int(site.get("max_projetos", LIMITE_POR_REPO)):
+        raise Falha(f"este repositorio ja tem {meus} projetos Pages (teto {site.get('max_projetos', LIMITE_POR_REPO)}, pacto95); nao cria projeto novo. Fale com o administrador")
     s, r = cf("POST", f"/accounts/{c['conta']}/pages/projects", c["cf_token"],
               {"name": projeto, "production_branch": "main"})
     if s not in (200, 201):
@@ -111,13 +127,14 @@ def garantir_projeto(c, projeto):
 def ultimo_deploy(c, projeto):
     s, r = cf("GET", f"/accounts/{c['conta']}/pages/projects/{projeto}/deployments?env=production", c["cf_token"])
     if s == 404:
-        return None
+        return None, None
     if s != 200:
         raise Falha(f"listar publicacoes HTTP {s}", _erros(r))
     for d in r.get("result") or []:
         if (d.get("latest_stage") or {}).get("status") == "success":
-            return ((d.get("deployment_trigger") or {}).get("metadata") or {}).get("commit_hash")
-    return None
+            m = (d.get("deployment_trigger") or {}).get("metadata") or {}
+            return m.get("commit_hash"), m.get("commit_message")
+    return None, None
 
 
 def garantir_dominio(c, projeto, host):
@@ -175,17 +192,17 @@ def montar(origem, destino, label, commit, retirado):
         origem = pathlib.Path(origem)
         for p in sorted(origem.rglob("*")):
             rel = p.relative_to(origem)
-            if not p.is_file() or p.suffix.lower() in (".md", ".sql") or rel.name == "_headers":
-                continue
+            if p.is_symlink() or not p.is_file() or p.suffix.lower() in (".md", ".sql") or rel.name == "_headers":
+                continue   # link simbolico nunca e copiado (levaria arquivo de fora, ex.: /proc/self/environ)
             if any(part.startswith(".") and part != ".well-known" for part in rel.parts):
                 continue
             if rel.parts[0] == "functions":
                 continue
             alvo = destino / rel
             alvo.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(p, alvo)
+            shutil.copy2(p, alvo, follow_symlinks=False)
         h = origem / "_headers"
-        if h.is_file():
+        if h.is_file() and not h.is_symlink():
             extra = h.read_text(encoding="utf-8", errors="replace")
     (destino / "_headers").write_text(BASE_HEADERS + ("\n" + extra if extra else ""), encoding="utf-8")
     (destino / "_versao.txt").write_text(f"site={label}\ncommit={commit}\n", encoding="utf-8")
@@ -209,6 +226,8 @@ def ler_aposentados(d):
 
 
 def um_label(c, site, d, tmp, label, retirado, log):
+    if label != site.get("raiz", "_raiz") and not regra.rotulo_valido(label):   # vale p/ pasta E para aposentados.txt
+        raise Falha(f"nome invalido: {label[:30]!r} (so letras minusculas, numeros e hifen, 1 a 30)")
     host, projeto = host_de(site, label), projeto_de(site, label)
     pasta = pathlib.Path(d) / site["pasta"] / label
     if retirado:
@@ -220,14 +239,15 @@ def um_label(c, site, d, tmp, label, retirado, log):
         commit = ultimo_commit(d, f"{site['pasta']}/{label}")
     if not commit:
         raise Falha("sem commit para a pasta (historico incompleto)")
-    alvo = garantir_projeto(c, projeto)
-    pub = ultimo_deploy(c, projeto)
+    alvo = garantir_projeto(c, site, projeto)
+    msg = MSG_RET if retirado else MSG_PUB
+    pub, pub_msg = ultimo_deploy(c, projeto)
     acao = "em dia"
-    if pub != commit or c["forcar"]:
+    if pub != commit or pub_msg != msg or c["forcar"]:
         saida = pathlib.Path(tmp) / "w" / "out"
         montar(pasta, saida, label, commit, retirado)
         rc = c["rodar"](["npx", "--yes", "wrangler@3", "pages", "deploy", "out", f"--project-name={projeto}",
-                         "--branch=main", f"--commit-hash={commit}", "--commit-message=publicar-sites",
+                         "--branch=main", f"--commit-hash={commit}", f"--commit-message={msg}",
                          "--commit-dirty=true"], pathlib.Path(tmp) / "w",
                         dict(c["env_base"], CLOUDFLARE_API_TOKEN=c["cf_token"], CLOUDFLARE_ACCOUNT_ID=c["conta"]),
                         log, 900)
@@ -255,8 +275,13 @@ def rodar(site, env, tmp, c):
     aposentados = ler_aposentados(d)
     todos = sorted(set(labels) | set(aposentados))
     linhas, novas, pendentes = [], [], []
+    t0 = time.time()
     for label in todos:
         k = f"{site['repo']}/{label}"
+        if time.time() - t0 > TETO_CICLO_S:
+            linhas.append(f"{k}: adiado (ciclo passou de {TETO_CICLO_S // 60} min; volta no proximo)")
+            pendentes.append(k)
+            continue
         retirado = label in aposentados
         if label.startswith("_") and label != site.get("raiz", "_raiz"):
             linhas.append(f"{k}: pasta '{label}' ignorada (so '{site.get('raiz', '_raiz')}' pode comecar com _)")
