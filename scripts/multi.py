@@ -28,7 +28,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import checar_pasta_site as regra  # noqa: E402
 
 API = "https://api.cloudflare.com/client/v4"
-VERSAO = 3   # sobe quando a logica muda: o cache de "em dia" do publicar.py e descartado e a corrente reaplica tudo
+VERSAO = 4   # sobe quando a logica muda: o cache de "em dia" do publicar.py e descartado e a corrente reaplica tudo
 LIMITE_PROJETOS = 95      # TTO-01: 100 projetos Pages por conta (plano gratis); para a 95
 LIMITE_POR_REPO = 30      # projetos Pages que UM repo multi pode ter (pacto95.json declara 30; aqui e aplicado, falha fechada)
 TETO_CICLO_S = 1500       # um ciclo nao passa de 25 min: o resto fica para o proximo (o job do Actions tem 30)
@@ -36,7 +36,7 @@ MSG_PUB, MSG_RET = "publicar-sites", "retirado"   # vai no commit-message do dep
 _PROJ = re.compile(r"^[a-z0-9][a-z0-9-]{0,57}$")
 REPETE_FALHA_S = 1800     # label que falhou volta a ser tentado depois de 30 min (falha passageira), sem reavisar
 BASE_HEADERS = ("/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n"
-                "  X-Frame-Options: SAMEORIGIN\n/_versao.txt\n  Cache-Control: no-store\n")
+                "  Content-Security-Policy: frame-ancestors 'self'\n/_versao.txt\n  Cache-Control: no-store\n")
 STUB = ('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" '
         'content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">'
         '<title>Pagina retirada</title><style>body{font:18px/1.5 Georgia,serif;margin:0;display:grid;'
