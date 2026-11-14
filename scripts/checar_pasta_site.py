@@ -45,13 +45,37 @@ SEGREDOS = [
 ]
 JWT = re.compile(r"\beyJ[A-Za-z0-9_\-]{10,}\.(eyJ[A-Za-z0-9_\-]{10,})\.[A-Za-z0-9_\-]{10,}")
 # padrao montado em partes de proposito: este arquivo DETECTA e RECUSA o uso; nao chama nada
-_HOST_BD = "[a-z0-9]{10,}\\." + "supa" + "base\\.co"
-_ROTA_FN = "functions" + "/v1/"
-PROIBIDO_USO = [
-    (re.compile(_HOST_BD + "|" + _ROTA_FN, re.I),
-     "chamada a banco/funcao de terceiro: consumo sem provisionamento (CPP-01). Fale com o administrador antes"),
-]
+_LITERAIS_BD = ("supa" + "base.co", "functions" + "/v1/")   # substring, nunca regex: regex sobre bundle minificado e quadratica
+_MSG_BD = "chamada a banco/funcao de terceiro: consumo sem provisionamento (CPP-01). Fale com o administrador antes"
 AVISO_TRAVESSAO = re.compile("[\u2014\u2013]")
+
+
+CPF = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")
+_EMAIL_ESQ = re.compile(r"[A-Za-z0-9._%+-]{1,64}$")
+_EMAIL_DIR = re.compile(r"[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){1,4}")
+
+
+def _emails_distintos(t, ate):
+    """Conta e-mails ancorando em '@' (custo por e-mail, nao por byte: base64 gigante nao trava)."""
+    achados, i = set(), t.find("@")
+    while i != -1 and len(achados) < ate:
+        esq = _EMAIL_ESQ.search(t[max(0, i - 64):i])
+        dir_ = _EMAIL_DIR.match(t[i + 1:i + 260])
+        if esq and dir_:
+            achados.add((esq.group(0) + "@" + dir_.group(0)).lower())
+        i = t.find("@", i + 1)
+    return achados
+
+
+def dados_pessoais(t):
+    """Motivo (str) se o texto parece base de dados de pessoas embutida; senao None. LGPD: site estatico e publico."""
+    cpfs = set(CPF.findall(t))
+    if len(cpfs) >= 3:
+        return f"{len(cpfs)} CPFs distintos"
+    emails = _emails_distintos(t, 40)
+    if len(emails) >= 40:
+        return "40 ou mais e-mails distintos"
+    return None
 
 
 def rotulo_valido(label):
@@ -118,8 +142,11 @@ def checar(pasta, label):
         if NOME_PROIBIDO.search(p.name):
             erros.append(f"{rel}: tipo de arquivo que nao pode ir ao ar (credencial, backup, banco ou script)")
             continue
-        if p.suffix.lower() in EXT_TEXTO and tam <= 6 * 1024 * 1024:
+        if p.suffix.lower() in EXT_TEXTO and tam <= TETO_ARQUIVO:
             t = _texto(p)
+            motivo = dados_pessoais(t)
+            if motivo:
+                erros.append(f"{rel}: parece base de dados de pessoas embutida ({motivo}). Dado pessoal nunca vai a site estatico publico (LGPD); avise o administrador")
             for rx, nome in SEGREDOS:
                 if rx.search(t):
                     erros.append(f"{rel}: contem {nome}. Segredo nunca vai a site estatico; tire e avise o administrador")
@@ -130,9 +157,9 @@ def checar(pasta, label):
                         erros.append(f"{rel}: contem chave de servico (service_role)")
                 except Exception:
                     pass
-            for rx, msg in PROIBIDO_USO:
-                if rx.search(t):
-                    erros.append(f"{rel}: {msg}")
+            tl = t.lower()
+            if any(s in tl for s in _LITERAIS_BD):
+                erros.append(f"{rel}: {_MSG_BD}")
             if p.suffix.lower() in (".html", ".htm") and AVISO_TRAVESSAO.search(t):
                 avisos.append(f"{rel}: tem travessao; a marca InnovaPeople usa so hifen")
     if total > TETO_TOTAL:
