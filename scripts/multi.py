@@ -95,7 +95,7 @@ def contar_projetos(c):
 def garantir_projeto(c, projeto):
     s, r = cf("GET", f"/accounts/{c['conta']}/pages/projects/{projeto}", c["cf_token"])
     if s == 200:
-        return
+        return (r.get("result") or {}).get("subdomain") or f"{projeto}.pages.dev"
     if s != 404:
         raise Falha(f"consulta ao projeto Pages HTTP {s}", _erros(r))
     if contar_projetos(c) >= LIMITE_PROJETOS:
@@ -104,6 +104,7 @@ def garantir_projeto(c, projeto):
               {"name": projeto, "production_branch": "main"})
     if s not in (200, 201):
         raise Falha(f"criar projeto Pages HTTP {s}", _erros(r))
+    return (r.get("result") or {}).get("subdomain") or f"{projeto}.pages.dev"
 
 
 def ultimo_deploy(c, projeto):
@@ -131,20 +132,29 @@ def garantir_dominio(c, projeto, host):
     return (r.get("result") or {}).get("status")
 
 
-def garantir_dns(c, site, host, projeto):
-    zona, alvo = site["zona_id"], f"{projeto}.pages.dev"
+def garantir_dns(c, site, host, alvo):
+    """alvo = subdominio pages.dev REAL do projeto (o nome pedido pode ter sido tomado por outra conta: 14/11 'rhia' virou
+    'rhia-djs'; apontar para o nome esperado cai no projeto alheio e a Cloudflare barra com erro 1014)."""
+    zona, alvo = site["zona_id"], alvo.lower()
     s, r = cf("GET", f"/zones/{zona}/dns_records?name={host}", c["dns_token"])
     if s != 200:
         raise Falha(f"ler DNS HTTP {s}", _erros(r))
-    for x in r.get("result") or []:
+    achados = r.get("result") or []
+    for x in achados:
         if x.get("type") == "CNAME" and (x.get("content") or "").lower() == alvo:
             return "ok"
-    if r.get("result"):
+    corpo = {"type": "CNAME", "name": host, "content": alvo, "proxied": True, "ttl": 1,
+             "comment": "publicar-sites (multi): criado automaticamente"}
+    if achados:
+        x = achados[0]
+        if len(achados) == 1 and x.get("type") == "CNAME" and (x.get("content") or "").lower().endswith(".pages.dev"):
+            s, r = cf("PUT", f"/zones/{zona}/dns_records/{x['id']}", c["dns_token"], corpo)  # nosso nome, alvo pages.dev errado
+            if s not in (200, 201):
+                raise Falha(f"corrigir DNS HTTP {s}", _erros(r))
+            return "corrigido"
         raise Falha("DNS: ja existe outro registro com este nome; nao sobrescrevo",
-                    f"{host}: {[(x.get('type'), (x.get('content') or '')[:40]) for x in r['result']]}")
-    s, r = cf("POST", f"/zones/{zona}/dns_records", c["dns_token"],
-              {"type": "CNAME", "name": host, "content": alvo, "proxied": True, "ttl": 1,
-               "comment": "publicar-sites (multi): criado automaticamente"})
+                    f"{host}: {[(y.get('type'), (y.get('content') or '')[:40]) for y in achados]}")
+    s, r = cf("POST", f"/zones/{zona}/dns_records", c["dns_token"], corpo)
     if s not in (200, 201):
         raise Falha(f"criar DNS HTTP {s}", _erros(r))
     return "criado"
@@ -209,7 +219,7 @@ def um_label(c, site, d, tmp, label, retirado, log):
         commit = ultimo_commit(d, f"{site['pasta']}/{label}")
     if not commit:
         raise Falha("sem commit para a pasta (historico incompleto)")
-    garantir_projeto(c, projeto)
+    alvo = garantir_projeto(c, projeto)
     pub = ultimo_deploy(c, projeto)
     acao = "em dia"
     if pub != commit or c["forcar"]:
@@ -224,7 +234,7 @@ def um_label(c, site, d, tmp, label, retirado, log):
             raise Falha(f"wrangler rc={rc}", c["cauda"](log))
         acao = "publicado"
     dom = garantir_dominio(c, projeto, host)
-    dns = garantir_dns(c, site, host, projeto)
+    dns = garantir_dns(c, site, host, alvo)
     return acao, commit, f"dominio {dom}, dns {dns}"
 
 
