@@ -136,6 +136,7 @@
     "bash scripts/montar_publicar.sh {dir}"
    ],
    "saida": ".publicar",
+   "relatorio_unidades": "abas-independencia.json",
    "projeto": "plataformainnovasphere",
    "ramo_cf": "main"
   },

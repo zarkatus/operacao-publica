@@ -42,6 +42,9 @@ ALVO = (os.environ.get("SITE") or "").strip()
 FORCAR = (os.environ.get("FORCAR") or "").strip() == "true"
 
 
+RELATORIOS = {}  # chave do site -> unidades com estado != atual (publicar() preenche; main() avisa)
+
+
 class Falha(Exception):
     def __init__(self, curto, detalhe=""):
         super().__init__(curto)
@@ -191,6 +194,7 @@ def publicar(site, sha, env, tmp, pub=None):
                d, e, log, timeout=900)
     if rc:
         raise Falha(f"wrangler rc={rc}", cauda(log))
+    RELATORIOS[chave(site)] = unidades_nao_atuais(d, site)   # lido do artefato, só com wrangler ok
     return got, n
 
 
@@ -230,17 +234,61 @@ def publicar_multi_ciclo(s, k, estado):
             return [f"{k}: {curto}\n{detalhe}"], []
 
 
-def avisar_central(texto):
+def avisar_central(texto, titulo="publicar-sites falhou", tag="warning"):
     topico = SEG.get("NTFY_TOPICO")
     if not topico:
         return
     req = urllib.request.Request(f"https://ntfy.sh/{topico}", data=texto[:3800].encode("utf-8"),
-                                 headers={"Title": "operacao-publica: publicar-sites falhou", "Priority": "4",
-                                          "Tags": "warning"})
+                                 headers={"Title": f"operacao-publica: {titulo}", "Priority": "4",
+                                          "Tags": tag})
     try:
         urllib.request.urlopen(req, timeout=20).read()
     except Exception as ex:  # aviso nunca derruba o ciclo
         print(f"aviso à central falhou: {type(ex).__name__}")
+
+
+def unidades_nao_atuais(d, site):
+    """I19 (I4 F6/F3): opção agnóstica site["relatorio_unidades"] = arquivo JSON do artefato publicado (ex.:
+    "abas-independencia.json") com unidades[] {unidade, estado, portao, motivo, sha, blob_reprovado}. Devolve a lista
+    das com estado != "atual"; None se o site não pede o relatório ou o arquivo não pôde ser lido (aí nada muda)."""
+    nome = site.get("relatorio_unidades")
+    if not nome:
+        return None
+    try:
+        dados = json.loads((pathlib.Path(d) / site["saida"] / nome).read_text(encoding="utf-8"))
+        return [u for u in dados.get("unidades") or [] if isinstance(u, dict) and u.get("estado", "atual") != "atual"]
+    except (OSError, ValueError, AttributeError):
+        print(f"{chave(site)}: relatório de unidades ({nome}) ilegível; sem aviso desta vez")
+        return None
+
+
+def avisar_retidas(k, estado, lista, got, enviar=None):
+    """Dedupe em estado["_retidas"][k] = conjunto (unidade, estado, blob_reprovado). Conjunto mudou = UMA mensagem
+    com todas as unidades; igual = nada; voltou a zero = 1 mensagem de volta. lista None = site sem a opção."""
+    if lista is None:
+        return False
+    enviar = enviar or avisar_central
+    agora = sorted([str(u.get("unidade")), str(u.get("estado")), str(u.get("blob_reprovado") or "")] for u in lista)
+    antes = estado.setdefault("_retidas", {}).get(k) or []
+    if agora == antes:
+        return False
+    if not agora:
+        enviar(f"{k}: todas as unidades voltaram ao HEAD ({got[:7]}). Nada mais retido ou fixado.",
+               titulo="unidades de volta ao HEAD", tag="white_check_mark")
+    else:
+        linhas = []
+        for u in lista:
+            linhas.append(f"- {u.get('unidade')} [{u.get('estado')}]"
+                          + (f" portão {u.get('portao')}" if u.get("portao") else "")
+                          + (f": {u.get('motivo')}" if u.get("motivo") else "")
+                          + f" · no ar a versão {str(u.get('sha') or '?')[:7]}"
+                          + (f", reprovada {str(u.get('blob_reprovado'))[:7]}" if u.get("blob_reprovado") else ""))
+        enviar(f"{k}: {len(lista)} unidade(s) ficaram para trás na publicação de {got[:7]}; o resto foi ao ar.\n"
+               + "\n".join(linhas)
+               + "\nAção: corrigir e empurrar; ou fixar em scripts/abas/fixar.json (apagar a linha devolve ao HEAD).",
+               titulo="unidades retidas ou fixadas", tag="warning")
+    estado["_retidas"][k] = agora
+    return True
 
 
 def ping_vivo(falhou):
@@ -304,6 +352,8 @@ def main():
                     print(f"{k}: em dia ({got[:7]} sem mudança de app desde {str(pub)[:7]})")
                     continue
                 conferidos.pop(k, None)
+                if not funcoes:
+                    avisar_retidas(k, estado, RELATORIOS.get(k), got)
                 print(f"{k}: publicado {got[:7]} ({n} arquivos; antes {str(pub)[:7]})")
             except Exception as ex:
                 curto = ex.curto if isinstance(ex, Falha) else type(ex).__name__
