@@ -283,6 +283,10 @@ def avisar_retidas(k, estado, lista, got, enviar=None):
                           + (f": {u.get('motivo')}" if u.get("motivo") else "")
                           + f" · no ar a versão {str(u.get('sha') or '?')[:7]}"
                           + (f", reprovada {str(u.get('blob_reprovado'))[:7]}" if u.get("blob_reprovado") else ""))
+            # E5 (26/11/2026): o arquivo infrator (relatório do ultimo_bom: arquivos_reprovados[{arquivo, blob}]), não só a unidade
+            for a in (u.get("arquivos_reprovados") or [])[:6]:
+                if isinstance(a, dict) and a.get("arquivo"):
+                    linhas.append(f"    arquivo: {a['arquivo']}" + (f" (blob {str(a['blob'])[:7]})" if a.get("blob") else ""))
         enviar(f"{k}: {len(lista)} unidade(s) ficaram para trás na publicação de {got[:7]}; o resto foi ao ar.\n"
                + "\n".join(linhas)
                + "\nAção: corrigir e empurrar; ou fixar em scripts/abas/fixar.json (apagar a linha devolve ao HEAD).",

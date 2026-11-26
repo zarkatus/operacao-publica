@@ -27,6 +27,15 @@ G = "c" * 40
 ok(p.avisar_retidas("plat", est, [U("stack-ti")], G, env) and len(msgs) == 1, "1a mensagem ao surgir uma retida")
 t = msgs[0][1]
 ok("stack-ti" in t and "estilo 3 -> 5" in t and "aaaaaaa" in t and "fixar.json" in t, "texto traz unidade, portao/valor, versao no ar, acao")
+# E5 (26/11/2026): o aviso nomeia o ARQUIVO infrator (e o blob reprovado dele), nao so a unidade
+V = dict(U("stack-ti"), arquivos_reprovados=[{"arquivo": "js/packs/stack-ti.js", "blob": "e" * 40}, {"arquivo": "css/stack.css", "blob": "f" * 40}])
+m5 = []
+est5 = {}
+p.avisar_retidas("plat", est5, [V], G, lambda t, titulo="x", tag="x": m5.append(t))
+ok(bool(m5) and "js/packs/stack-ti.js" in m5[0] and "css/stack.css" in m5[0] and "eeeeeee" in m5[0], "E5: texto traz o arquivo infrator e o blob dele")
+m6 = []
+p.avisar_retidas("plat", {}, [U("stack-ti")], G, lambda t, titulo="x", tag="x": m6.append(t))
+ok(bool(m6) and "arquivo" not in m6[0].lower().replace("arquivos", "") or "stack-ti" in m6[0], "E5: sem arquivos_reprovados no relatorio o aviso antigo segue valendo")
 ok(msgs[0][0] != "falhou" and "retidas" in msgs[0][0], "titulo proprio (parametro), nao o fixo de falha")
 ok(not p.avisar_retidas("plat", est, [U("stack-ti")], G, env) and len(msgs) == 1, "2a publicacao igual nao repete")
 ok(p.avisar_retidas("plat", est, [U("stack-ti"), U("contingencia", "fixada", "")], G, env) and len(msgs) == 2
