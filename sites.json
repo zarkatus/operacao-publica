@@ -176,9 +176,10 @@
    "repo": "crm-picarras-hills",
    "ramo": "main",
    "etapas": [
-    "python3 scripts/checar_icones.py dist manifest.json"
+    "python3 scripts/checar_icones.py dist manifest.json",
+    "rm -rf .publicar && cp -r dist .publicar && node scripts/strip_comentarios_html.mjs .publicar"
    ],
-   "saida": "dist",
+   "saida": ".publicar",
    "projeto": "crm-picarras-hills",
    "ramo_cf": "main"
   },
