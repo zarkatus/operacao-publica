@@ -173,6 +173,16 @@
    "ramo_cf": "main"
   },
   {
+   "repo": "setup-innovasphere",
+   "ramo": "main",
+   "etapas": [
+    "node scripts/build.mjs"
+   ],
+   "saida": "dist",
+   "projeto": "setup",
+   "ramo_cf": "main"
+  },
+  {
    "repo": "crm-picarras-hills",
    "ramo": "main",
    "etapas": [
